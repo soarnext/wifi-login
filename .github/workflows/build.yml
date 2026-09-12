@@ -114,32 +114,27 @@ jobs:
 
       - name: Extract release notes from CHANGELOG
         if: steps.need.outputs.exists != 'skip'
-        id: notes
         run: |
           set -euo pipefail
           TAG="${{ steps.ver.outputs.tag }}"
           VER="${TAG#v}"
+          # 注意: 用 --notes-file 传文件, 不能用 --notes "$var" ——
+          # 反引号内容会被 shell 当成命令替换执行, 导致代码片段被吞掉。
           {
-            echo 'notes<<CHANGELOG_EOF'
-            # 抽取 CHANGELOG.md 中该版本的段落 (到下一个 ## 为止)
+            # 抽取 CHANGELOG.md 中该版本的段落 (到下一个 ## 或 [x.y.z]: 链接定义为止)
             awk -v v="$VER" '
-              $0 ~ "^## \\[" v "\\]" { found=1; print "# " v " 更新内容"; next }
+              $0 ~ "^## \\[" v "\\]" { found=1; print "# " TAGNAME; next }
               found && /^## / { exit }
+              found && /^\[/ { exit }
               found { print }
-            ' CHANGELOG.md
+            ' TAGNAME="$TAG" CHANGELOG.md
             echo ''
             echo '---'
             echo ''
-            echo '## 安装'
-            echo ''
-            echo '```sh'
-            echo 'adb push *.amr /data/local/tmp/'
-            echo 'adb shell miniapp_cli install /data/local/tmp/'"$(ls out/*.amr | head -1 | xargs basename)"
-            echo '```'
-            echo ''
             echo "由 GitHub Actions 自动发布 · commit \`${GITHUB_SHA::7}\`"
-            echo 'CHANGELOG_EOF'
-          } >> "$GITHUB_OUTPUT"
+          } > release-notes.md
+          echo "----- release-notes.md -----"
+          cat release-notes.md
 
       - name: Create or update Release
         if: steps.need.outputs.exists != 'skip'
@@ -154,7 +149,7 @@ jobs:
             gh release create "$TAG" out/*.amr \
               --repo "$GITHUB_REPOSITORY" \
               --title "$TAG" \
-              --notes "${{ steps.notes.outputs.notes }}" \
+              --notes-file release-notes.md \
               --latest
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY"
