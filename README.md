@@ -4,6 +4,28 @@
 从 Panabit 上网认证系统的 Portal 页面 (`登入/index.html` + `assert/portal.js|panabit.js|crypto.js`)
 提取的协议, 仅实现**账号密码登录**。
 
+## 设备兼容性
+
+| 机型 | 状态 | 说明 |
+| --- | --- | --- |
+| **有道词典笔 X6PRO** | ✅ 已实测 | 本项目唯一完成真机验证的机型，开发与联调均在其上进行 |
+| 其他有道词典笔机型 | ⚠️ 未验证 | 未做过适配测试，不保证可用 |
+
+本应用依赖固件私有能力（自研原生模块 `panet`、系统输入法 `global.startTextEdit`、
+960×266 横条屏布局），不同机型/固件版本之间可能存在差异。
+
+**其他机型遇到问题怎么办：**
+
+- 欢迎提交 [Issues](../../issues) 反馈，请附上机型、固件版本与 `/userdisk/xiro/wifi.log` 日志
+- 也欢迎 Fork 后提交 Pull Request 修复
+
+**PR 合并的前提（务必遵守）：**
+
+1. **不得影响 X6PRO 上已验证的现有功能** —— 这是唯一的基准机型
+2. 机型差异请用能力探测做分支处理（例如 `panet` 方法是否存在、屏幕尺寸、
+   jsapi 可用性），不要直接改掉通用逻辑
+3. 涉及屏幕尺寸的改动必须同时适配 960×266
+
 ## 功能
 
 - **连通性测试 (国内探测源)**: 小米 `connect.rom.miui.com/generate_204`、vivo `wifi.vivo.com.cn/generate_204`、华为 `connectivitycheck.platform.hicloud.com/generate_204`。
