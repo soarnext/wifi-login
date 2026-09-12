@@ -1,8 +1,7 @@
 # WiFi 网络认证 (有道词典笔)
 
-面向有道词典笔 (Falcon mini-app 运行时) 的 WiFi captive portal 登录应用。
-从 Panabit 上网认证系统的 Portal 页面 (`登入/index.html` + `assert/portal.js|panabit.js|crypto.js`)
-提取的协议, 仅实现**账号密码登录**。
+面向有道词典笔 (Falcon mini-app 运行时) 的 WiFi captive portal 登录应用，
+对接 Panabit 上网认证系统的 Portal 协议，实现**账号密码登录**与**在线设备管理**。
 
 ## 设备兼容性
 
@@ -71,23 +70,32 @@
 ## 工程
 
 ```
-.github/workflows/build.yml   # GitHub Actions: Node 18 + pnpm + aiot-vue-cli 打包 AMR
+.github/workflows/build.yml   # GitHub Actions: 交叉编译 .so + 打包 AMR + 发布 Release
+CHANGELOG.md                  # 更新日志 (CI 发版时按版本抽取为 Release Notes)
+native/                       # 自研原生模块 panet (固件无系统 http/storage 模块)
+  panet/panet.cpp             #   request / writeFile / appendFile / readFile / mkdirs / wifiSsid
+  panet/CMakeLists.txt        #   aarch64 交叉编译配置
+  sdk/                        #   板端 JSAPI SDK 头文件
 ui/                           # 小程序源码 (aiot-vue-cli 工程)
   src/app.js                  # setViewPort(960) + BasePage 注册
+  src/app.json                # 页面注册: index / management / log / about
   src/base-page.js            # 页面基类: token/timer 统一释放
-  src/pages/index/index.vue   # 主页面 (960x266 横条屏)
-  src/pages/management/management.vue  # 设备管理页 (列表/下线)
-  src/services/net.js         # http JSAPI 适配 (返回值归一化)
+  src/pages/index/index.vue        # 主页面 (960x266 横条屏)
+  src/pages/management/management.vue  # 设备管理页 (列表/单机下线/全部下线)
+  src/pages/log/log.vue            # 日志页 (最近 120 行, 3s 刷新)
+  src/pages/about/about.vue        # 关于页
+  src/services/net.js         # panet 适配层 (返回值归一化) + wifiSsid()
   src/services/detect.js      # 连通性测试 (并发竞速) + portal 劫持解析
   src/services/portal.js      # Panabit Portal API 客户端 (含设备列表/下线)
   src/services/aes.js         # AES-128-ECB/ZeroPadding 纯 JS 实现
   src/services/ime.js         # 系统输入法 (global.startTextEdit) 封装
-  src/services/store.js       # 账号持久化
-test/                         # 本地纯逻辑测试 (node test/*.test.mjs)
-profiles/                     # 设备画像
+  src/services/store.js       # 账号持久化 (按 WiFi/SSID 分桶)
+  src/services/logger.js      # 运行日志写 /userdisk/xiro/wifi.log
+  src/services/version.js     # 版本号
+profiles/                     # 设备画像 (X6PRO 真机实测结论)
 ```
 
-## 提取的 Panabit Portal API
+## Panabit Portal API
 
 端点: `http://<portal服务器>[:端口]/api?<查询参数>`, 响应 JSON, `code==0` 成功, `code==200` 为 MAC 免认证已通过。
 
@@ -102,13 +110,12 @@ profiles/                     # 设备画像
 
 ## 构建与安装
 
-GitHub Actions (wifi 分支) 云端打包, 不走本地构建:
+GitHub Actions 云端打包（推送 `main` 或打 `v*` 标签即触发；打标签时构建完成后
+自动创建 Release 并上传 AMR）。也可直接从 [Releases](../../releases) 下载现成产物:
 
 ```sh
-git push origin wifi          # 触发 Build WiFi Login AMR
-gh run download -n wifi-login-amr
-adb push wifi-login/*.amr /userdisk/wifi-login.amr
-adb shell "miniapp_cli install /userdisk/wifi-login.amr"
+adb push 8001865309000001.1_0_0.amr /data/local/tmp/
+adb shell "miniapp_cli install /data/local/tmp/8001865309000001.1_0_0.amr"
 adb shell "miniapp_cli start 8001865309000001"
 ```
 
