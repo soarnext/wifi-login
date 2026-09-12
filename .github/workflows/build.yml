@@ -2,14 +2,24 @@ name: Build WiFi Login AMR
 
 on:
   push:
-    branches: [wifi]
+    branches: [main, master]
+    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release:
+        description: '构建后创建 Release 并上传 AMR'
+        type: boolean
+        default: true
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install aarch64 cross toolchain
         run: |
@@ -65,3 +75,86 @@ jobs:
           path: ./out/*.amr
           if-no-files-found: error
           retention-days: 30
+
+      # ---- Release ----
+      # 触发条件: 打了 v* 标签, 或手动运行时勾选 release。
+      # 版本号以 ui/package.json 为准, 与 APP_VERSION 保持一致。
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            V=$(node -p "require('./ui/package.json').version")
+            TAG="v${V}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "版本号: ${TAG}"
+
+      - name: Check release needed
+        id: need
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]] || [[ "${{ inputs.release }}" == "true" ]]; then
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+              echo "Release $TAG 已存在, 将更新产物"
+            else
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              echo "将创建 Release $TAG"
+            fi
+          else
+            echo "exists=skip" >> "$GITHUB_OUTPUT"
+            echo "本次不发布 Release"
+          fi
+
+      - name: Extract release notes from CHANGELOG
+        if: steps.need.outputs.exists != 'skip'
+        id: notes
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.tag }}"
+          VER="${TAG#v}"
+          {
+            echo 'notes<<CHANGELOG_EOF'
+            # 抽取 CHANGELOG.md 中该版本的段落 (到下一个 ## 为止)
+            awk -v v="$VER" '
+              $0 ~ "^## \\[" v "\\]" { found=1; print "# " v " 更新内容"; next }
+              found && /^## / { exit }
+              found { print }
+            ' CHANGELOG.md
+            echo ''
+            echo '---'
+            echo ''
+            echo '## 安装'
+            echo ''
+            echo '```sh'
+            echo 'adb push *.amr /data/local/tmp/'
+            echo 'adb shell miniapp_cli install /data/local/tmp/'"$(ls out/*.amr | head -1 | xargs basename)"
+            echo '```'
+            echo ''
+            echo "由 GitHub Actions 自动发布 · commit \`${GITHUB_SHA::7}\`"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update Release
+        if: steps.need.outputs.exists != 'skip'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.need.outputs.exists }}" == "true" ]]; then
+            gh release upload "$TAG" out/*.amr --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" out/*.amr \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" \
+              --notes "${{ steps.notes.outputs.notes }}" \
+              --latest
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY"

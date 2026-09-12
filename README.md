@@ -78,21 +78,6 @@ profiles/                     # 设备画像
 | ucenter | load_user_list | ip | 在线设备列表 (管理页提取) |
 | ucenter | user_offone | addr | 单设备下线 (addr=目标设备在线 IP, 管理页提取) |
 
-## 测试
-
-```sh
-node test/aes.test.mjs        # AES 对照 Node crypto (aes-128-ecb zeropadding)
-node test/detect.test.mjs     # 跳转解析 / URL 拆解
-node test/portal.test.mjs     # 接口参数构造 + 探测并发竞速/abort 逻辑
-node test/store.test.mjs      # 账号按 WiFi(SSID) 分桶、v1 迁移、忘记密码、损坏回退
-```
-
-端到端联调 (模拟 Panabit 服务器, 已支持设备列表/单机下线):
-
-```sh
-python test/mock_panabit.py 8080   # test/test123456 -> ok
-```
-
 ## 构建与安装
 
 GitHub Actions (wifi 分支) 云端打包, 不走本地构建:

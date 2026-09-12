@@ -24,7 +24,7 @@ screen:
 
 package:
   appid: "8001865309000001"
-  version: 0.1.0
+  version: 1.0.0
   start_page: index  (固件实测: miniapp_cli start <appid> 不带 --page 才进主页)
   安装: adb push <app>.amr /userdisk/ && miniapp_cli install /userdisk/<app>.amr
 

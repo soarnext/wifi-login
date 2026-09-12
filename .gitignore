@@ -9,3 +9,6 @@ dl/
 out/
 *.log
 build/
+
+# 本地测试脚本 (不随仓库发布)
+test/
