@@ -145,6 +145,8 @@ jobs:
           set -euo pipefail
           if [[ "${{ steps.need.outputs.exists }}" == "true" ]]; then
             gh release upload "$TAG" out/*.amr --repo "$GITHUB_REPOSITORY" --clobber
+            # 同步刷新说明文字 (CHANGELOG 可能已更新, upload 不会改 notes)
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file release-notes.md
           else
             gh release create "$TAG" out/*.amr \
               --repo "$GITHUB_REPOSITORY" \

@@ -1,6 +1,6 @@
 # WiFi 网络认证 (有道词典笔)
 
-面向有道词典笔 (Falcon mini-app 运行时) 的 WiFi captive portal 登录应用，
+面向有道词典笔的 WiFi captive portal 登录应用，
 对接 Panabit 上网认证系统的 Portal 协议，实现**账号密码登录**与**在线设备管理**。
 
 ## 设备兼容性
