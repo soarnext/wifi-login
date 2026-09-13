@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 开源仓库
+    url: https://github.com/soarnext/wifi-login
+    about: 文档见 README.md, 适配器开发指南见 ADAPTER.md
