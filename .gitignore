@@ -5,6 +5,8 @@ syncheck/
 amr-inspect/
 dl/
 *.png
+# 真机界面截图 (README 展示用)
+!screenshots/*.png
 
 out/
 *.log
