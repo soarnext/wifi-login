@@ -108,13 +108,13 @@ export default {
 .wrapper {
   width: 960px;
   height: 266px;
-  background-color: #10233f;
+  background-color: #000000;
   flex-direction: column;
 }
 .headbar {
   width: 960px;
   height: 44px;
-  background-color: #16324f;
+  background-color: #141414;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -123,7 +123,7 @@ export default {
 }
 .title {
   font-size: 26px;
-  color: #e8f1fb;
+  color: #ffffff;
   font-weight: bold;
 }
 .headbtns {
@@ -134,7 +134,7 @@ export default {
   width: 90px;
   height: 32px;
   border-radius: 16px;
-  background-color: #2c5aa0;
+  background-color: #24466b;
   align-items: center;
   justify-content: center;
   margin-left: 8px;
@@ -143,10 +143,10 @@ export default {
   background-color: #2f7bd9;
 }
 .hbtn-clear {
-  background-color: #274d7c;
+  background-color: #1e3a5f;
 }
 .hbtn-back {
-  background-color: #3f5f85;
+  background-color: #333333;
 }
 .hbtn-text {
   font-size: 17px;
@@ -161,30 +161,30 @@ export default {
 }
 .logline {
   font-size: 16px;
-  color: #b8cde8;
+  color: #cccccc;
   margin-bottom: 3px;
 }
 .logline-err {
-  color: #ff8f8f;
+  color: #ff7b7b;
 }
 .logline-ok {
-  color: #7fd8b8;
+  color: #6fd8b0;
 }
 .logline-dim {
-  color: #5f7ea6;
+  color: #666666;
 }
 .logline-info {
-  color: #9fc3ee;
+  color: #a8c8ee;
 }
 .logempty {
-  color: #4a6076;
+  color: #555555;
   margin-top: 20px;
   text-align: center;
 }
 .statusbar {
   width: 960px;
   flex: 1;
-  background-color: #16324f;
+  background-color: #141414;
   justify-content: flex-end;
   padding-left: 20px;
   padding-right: 16px;
@@ -193,7 +193,7 @@ export default {
 }
 .statusinfo {
   font-size: 13px;
-  color: #6f8cb0;
+  color: #888888;
   text-align: right;
 }
 </style>

@@ -961,13 +961,13 @@ export default {
 .wrapper {
   width: 960px;
   height: 266px;
-  background-color: #10233f;
+  background-color: #000000;
   flex-direction: column;
 }
 .headbar {
   width: 960px;
   height: 44px;
-  background-color: #16324f;
+  background-color: #141414;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -994,7 +994,7 @@ export default {
 }
 .title {
   font-size: 26px;
-  color: #e8f1fb;
+  color: #ffffff;
   font-weight: bold;
 }
 .headbtns {
@@ -1012,7 +1012,7 @@ export default {
 .headbtn-sm {
   width: 90px;
   margin-right: 10px;
-  background-color: #3f5f85;
+  background-color: #333333;
 }
 .headbtn-text {
   font-size: 18px;
@@ -1021,12 +1021,12 @@ export default {
 .divider {
   width: 960px;
   height: 1px;
-  background-color: #0d1b30;
+  background-color: #222222;
 }
 .statusarea {
   width: 960px;
   height: 100px;
-  background-color: #0e1d33;
+  background-color: #000000;
   flex-direction: row;
   padding-left: 20px;
   padding-right: 20px;
@@ -1094,19 +1094,19 @@ export default {
 .infolabel {
   width: 100px;
   font-size: 14px;
-  color: #6f8cb0;
+  color: #888888;
 }
 .infovalue {
   width: 460px;
   font-size: 14px;
-  color: #b8cde8;
+  color: #cccccc;
   lines: 1;
   text-overflow: ellipsis;
 }
 .formrow {
   width: 960px;
   height: 60px;
-  background-color: #16324f;
+  background-color: #141414;
   flex-direction: row;
   align-items: center;
   padding-left: 16px;
@@ -1115,7 +1115,7 @@ export default {
 .field {
   width: 270px;
   height: 42px;
-  background-color: #0d1b30;
+  background-color: #1a1a1a;
   border-radius: 8px;
   flex-direction: row;
   align-items: center;
@@ -1128,24 +1128,24 @@ export default {
 .fieldlabel {
   width: 52px;
   font-size: 18px;
-  color: #6f8cb0;
+  color: #888888;
 }
 .fieldvalue {
   width: 190px;
   font-size: 18px;
-  color: #e8f1fb;
+  color: #ffffff;
   lines: 1;
   text-overflow: ellipsis;
 }
 .fieldvalue-wide {
   width: 480px;
   font-size: 18px;
-  color: #e8f1fb;
+  color: #ffffff;
   lines: 1;
   text-overflow: ellipsis;
 }
 .fieldplaceholder {
-  color: #4a6076;
+  color: #555555;
 }
 .remember {
   width: 120px;
@@ -1156,7 +1156,7 @@ export default {
 }
 .remembertext {
   font-size: 18px;
-  color: #b8cde8;
+  color: #cccccc;
 }
 .remembertext-on {
   color: #37c2a0;
@@ -1174,15 +1174,15 @@ export default {
 }
 .btn-busy {
   width: 130px;
-  background-color: #274d7c;
+  background-color: #1e3a5f;
 }
 .btn-manage {
   width: 140px;
-  background-color: #2c5aa0;
+  background-color: #24466b;
 }
 .btn-logout {
   width: 100px;
-  background-color: #0d1b30;
+  background-color: #1a1a1a;
 }
 .btn-text {
   font-size: 20px;
@@ -1190,13 +1190,13 @@ export default {
   font-weight: bold;
 }
 .btn-text-logout {
-  color: #ff8f8f;
+  color: #ff7b7b;
   font-weight: normal;
 }
 .msgrow {
   width: 960px;
   flex: 1;
-  background-color: #0e1d33;
+  background-color: #000000;
   flex-direction: row;
   align-items: center;
   padding-left: 20px;
@@ -1223,12 +1223,12 @@ export default {
   flex: 1;
 }
 .msg-error {
-  color: #ff8f8f;
+  color: #ff7b7b;
 }
 .msg-warn {
   color: #ffd48a;
 }
 .msg-info {
-  color: #9fc3ee;
+  color: #a8c8ee;
 }
 </style>

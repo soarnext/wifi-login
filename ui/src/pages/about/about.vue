@@ -67,13 +67,13 @@ export default {
 .wrapper {
   width: 960px;
   height: 266px;
-  background-color: #10233f;
+  background-color: #000000;
   flex-direction: column;
 }
 .headbar {
   width: 960px;
   height: 44px;
-  background-color: #16324f;
+  background-color: #141414;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -82,7 +82,7 @@ export default {
 }
 .title {
   font-size: 26px;
-  color: #e8f1fb;
+  color: #ffffff;
   font-weight: bold;
 }
 .headbtns {
@@ -93,7 +93,7 @@ export default {
   width: 90px;
   height: 32px;
   border-radius: 16px;
-  background-color: #3f5f85;
+  background-color: #333333;
   align-items: center;
   justify-content: center;
 }
@@ -121,7 +121,7 @@ export default {
 .verbadge {
   height: 26px;
   border-radius: 13px;
-  background-color: #1f5c4c;
+  background-color: #143326;
   align-items: center;
   justify-content: center;
   padding-left: 10px;
@@ -140,7 +140,7 @@ export default {
 }
 .row {
   font-size: 15px;
-  color: #b8cde8;
+  color: #cccccc;
   margin-bottom: 3px;
 }
 .coderow {
@@ -149,12 +149,12 @@ export default {
 .statusbar {
   width: 960px;
   height: 24px;
-  background-color: #16324f;
+  background-color: #141414;
   justify-content: center;
   padding-left: 20px;
 }
 .statusinfo {
   font-size: 13px;
-  color: #6f8cb0;
+  color: #888888;
 }
 </style>

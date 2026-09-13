@@ -401,13 +401,13 @@ export default {
 .wrapper {
   width: 960px;
   height: 266px;
-  background-color: #10233f;
+  background-color: #000000;
   flex-direction: column;
 }
 .headbar {
   width: 960px;
   height: 44px;
-  background-color: #16324f;
+  background-color: #141414;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
@@ -416,7 +416,7 @@ export default {
 }
 .title {
   font-size: 26px;
-  color: #e8f1fb;
+  color: #ffffff;
   font-weight: bold;
 }
 .headbtns {
@@ -427,7 +427,7 @@ export default {
   width: 110px;
   height: 32px;
   border-radius: 16px;
-  background-color: #2c5aa0;
+  background-color: #24466b;
   align-items: center;
   justify-content: center;
   margin-left: 10px;
@@ -436,11 +436,11 @@ export default {
   background-color: #2f7bd9;
 }
 .hbtn-all {
-  background-color: #8a3b3b;
+  background-color: #7a2f2f;
   width: 130px;
 }
 .hbtn-back {
-  background-color: #3f5f85;
+  background-color: #333333;
 }
 .hbtn-text {
   font-size: 18px;
@@ -458,12 +458,12 @@ export default {
 .infolabel {
   width: 130px;
   font-size: 15px;
-  color: #6f8cb0;
+  color: #888888;
 }
 .infovalue {
   width: 620px;
   font-size: 15px;
-  color: #b8cde8;
+  color: #cccccc;
   lines: 1;
   text-overflow: ellipsis;
 }
@@ -497,7 +497,7 @@ export default {
 .devitem {
   width: 928px;
   height: 48px;
-  background-color: #16324f;
+  background-color: #141414;
   border-radius: 10px;
   flex-direction: row;
   align-items: center;
@@ -506,7 +506,7 @@ export default {
   margin-bottom: 8px;
 }
 .devitem-self {
-  background-color: #1c3e60;
+  background-color: #1e2a3a;
 }
 .devmain {
   width: 640px;
@@ -515,14 +515,14 @@ export default {
 }
 .devname {
   font-size: 19px;
-  color: #e8f1fb;
+  color: #ffffff;
   lines: 1;
   text-overflow: ellipsis;
   height: 24px;
 }
 .devmeta {
   font-size: 13px;
-  color: #6f8cb0;
+  color: #888888;
   lines: 1;
   text-overflow: ellipsis;
   height: 17px;
@@ -531,7 +531,7 @@ export default {
   width: 62px;
   height: 24px;
   border-radius: 12px;
-  background-color: #1f5c4c;
+  background-color: #143326;
   align-items: center;
   justify-content: center;
   margin-right: 8px;
@@ -544,12 +544,12 @@ export default {
   width: 96px;
   height: 32px;
   border-radius: 8px;
-  background-color: #8a3b3b;
+  background-color: #7a2f2f;
   align-items: center;
   justify-content: center;
 }
 .devbtn-busy {
-  background-color: #4a2a2a;
+  background-color: #332020;
 }
 .devbtn-text {
   font-size: 17px;
@@ -557,14 +557,14 @@ export default {
 }
 .devempty {
   font-size: 17px;
-  color: #4a6076;
+  color: #555555;
   margin-top: 20px;
   text-align: center;
 }
 .msgrow {
   width: 960px;
   flex: 1;
-  background-color: #0e1d33;
+  background-color: #000000;
   flex-direction: row;
   align-items: center;
   padding-left: 20px;
@@ -591,13 +591,13 @@ export default {
   flex: 1;
 }
 .msg-error {
-  color: #ff8f8f;
+  color: #ff7b7b;
 }
 .msg-warn {
   color: #ffd48a;
 }
 .msg-info {
-  color: #9fc3ee;
+  color: #a8c8ee;
 }
 
 /* 确认弹层 */
@@ -607,13 +607,13 @@ export default {
   top: 0;
   width: 960px;
   height: 266px;
-  background-color: rgba(0, 0, 0, 0.55);
+  background-color: rgba(0, 0, 0, 0.7);
   align-items: center;
   justify-content: center;
 }
 .dialog {
   width: 520px;
-  background-color: #16324f;
+  background-color: #1a1a1a;
   border-radius: 12px;
   padding: 18px;
   flex-direction: column;
@@ -621,18 +621,18 @@ export default {
 }
 .dlgtitle {
   font-size: 19px;
-  color: #e8f1fb;
+  color: #ffffff;
   font-weight: bold;
 }
 .dlgdivider {
   width: 484px;
   height: 1px;
-  background-color: #0d1b30;
+  background-color: #222222;
   margin-top: 12px;
 }
 .dlgtext {
   font-size: 20px;
-  color: #e8f1fb;
+  color: #ffffff;
   lines: 2;
   text-align: center;
   margin-top: 14px;
@@ -652,10 +652,10 @@ export default {
   margin-right: 10px;
 }
 .dlgbtn-cancel {
-  background-color: #3f5f85;
+  background-color: #333333;
 }
 .dlgbtn-ok {
-  background-color: #8a3b3b;
+  background-color: #7a2f2f;
 }
 .dlgbtn-text {
   font-size: 19px;
