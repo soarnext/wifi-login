@@ -1,7 +1,10 @@
 <template>
   <div class="wrapper">
     <div class="headbar">
-      <text class="title">WiFi 网络认证</text>
+      <div class="titlerow">
+        <div class="logo"><text class="logo-text">Wi</text></div>
+        <text class="title">WiFi 网络认证</text>
+      </div>
       <div class="headbtns">
         <div class="headbtn headbtn-sm" @click="openLog">
           <text class="headbtn-text">日志</text>
@@ -14,30 +17,42 @@
         </div>
       </div>
     </div>
+    <div class="divider"></div>
 
     <div class="statusarea" @click="runCheck(null, true)">
-      <text class="status status-free" v-if="pageState === 'free'">无需登入</text>
-      <text class="status status-ok" v-if="pageState === 'ok'">认证成功，无需登入</text>
-      <text class="status status-portal" v-if="pageState === 'portal'">需要认证</text>
-      <text class="status status-offline" v-if="pageState === 'offline'">无网络连接</text>
-      <text class="status status-busy" v-if="pageState === 'busy'">正在检测…</text>
-      <text class="status status-busy" v-if="pageState === 'manual'">需要认证（未识别服务器）</text>
-
-      <div class="inforow" v-if="probeName">
-        <text class="infolabel">连通性测试</text>
-        <text class="infovalue">{{ probeName }}</text>
+      <div class="statusmain">
+        <div class="statusline">
+          <div class="statusdot statusdot-free" v-if="pageState === 'free'"></div>
+          <div class="statusdot statusdot-ok" v-if="pageState === 'ok'"></div>
+          <div class="statusdot statusdot-portal" v-if="pageState === 'portal'"></div>
+          <div class="statusdot statusdot-offline" v-if="pageState === 'offline'"></div>
+          <div class="statusdot statusdot-busy" v-if="pageState === 'busy'"></div>
+          <div class="statusdot statusdot-busy" v-if="pageState === 'manual'"></div>
+          <text class="status status-free" v-if="pageState === 'free'">无需登入</text>
+          <text class="status status-ok" v-if="pageState === 'ok'">认证成功，无需登入</text>
+          <text class="status status-portal" v-if="pageState === 'portal'">需要认证</text>
+          <text class="status status-offline" v-if="pageState === 'offline'">无网络连接</text>
+          <text class="status status-busy" v-if="pageState === 'busy'">正在检测…</text>
+          <text class="status status-busy" v-if="pageState === 'manual'">需要认证（未识别服务器）</text>
+        </div>
       </div>
-      <div class="inforow" v-if="serverShow">
-        <text class="infolabel">认证服务器</text>
-        <text class="infovalue">{{ serverShow }}</text>
-      </div>
-      <div class="inforow" v-if="portalPage">
-        <text class="infolabel">跳转页面</text>
-        <text class="infovalue">{{ portalPage }}</text>
-      </div>
-      <div class="inforow" v-if="deviceIp">
-        <text class="infolabel">本机参数</text>
-        <text class="infovalue">{{ deviceIp }}</text>
+      <div class="statusinfo">
+        <div class="inforow" v-if="probeName">
+          <text class="infolabel">连通性测试</text>
+          <text class="infovalue">{{ probeName }}</text>
+        </div>
+        <div class="inforow" v-if="serverShow">
+          <text class="infolabel">认证服务器</text>
+          <text class="infovalue">{{ serverShow }}</text>
+        </div>
+        <div class="inforow" v-if="portalPage">
+          <text class="infolabel">跳转页面</text>
+          <text class="infovalue">{{ portalPage }}</text>
+        </div>
+        <div class="inforow" v-if="deviceIp">
+          <text class="infolabel">本机参数</text>
+          <text class="infovalue">{{ deviceIp }}</text>
+        </div>
       </div>
     </div>
 
@@ -83,7 +98,11 @@
       </div>
     </div>
 
+    <div class="divider"></div>
     <div class="msgrow">
+      <div class="msgbar msgbar-error" v-if="msgType === 'error' && msg"></div>
+      <div class="msgbar msgbar-warn" v-if="msgType === 'warn' && msg"></div>
+      <div class="msgbar msgbar-info" v-if="msgType === 'info'"></div>
       <text class="msg msg-error" v-if="msgType === 'error'">{{ msg }}</text>
       <text class="msg msg-warn" v-if="msgType === 'warn'">{{ msg }}</text>
       <text class="msg msg-info" v-if="msgType === 'info'">{{ msg }}</text>
@@ -955,43 +974,97 @@ export default {
   padding-left: 20px;
   padding-right: 16px;
 }
+.titlerow {
+  flex-direction: row;
+  align-items: center;
+}
+.logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: #2f7bd9;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+.logo-text {
+  font-size: 15px;
+  color: #ffffff;
+  font-weight: bold;
+}
 .title {
   font-size: 26px;
   color: #e8f1fb;
   font-weight: bold;
 }
+.headbtns {
+  flex-direction: row;
+  align-items: center;
+}
 .headbtn {
   width: 130px;
   height: 32px;
   border-radius: 16px;
-  background-color: #2c5aa0;
+  background-color: #2f7bd9;
   align-items: center;
   justify-content: center;
-}
-.headbtn-text {
-  font-size: 18px;
-  color: #ffffff;
-}
-.headbtns {
-  flex-direction: row;
-  align-items: center;
 }
 .headbtn-sm {
   width: 90px;
   margin-right: 10px;
   background-color: #3f5f85;
 }
+.headbtn-text {
+  font-size: 18px;
+  color: #ffffff;
+}
+.divider {
+  width: 960px;
+  height: 1px;
+  background-color: #0d1b30;
+}
 .statusarea {
   width: 960px;
-  height: 96px;
+  height: 100px;
+  background-color: #0e1d33;
+  flex-direction: row;
   padding-left: 20px;
-  padding-top: 8px;
+  padding-right: 20px;
+}
+.statusmain {
+  width: 360px;
   flex-direction: column;
+  justify-content: center;
+}
+.statusline {
+  flex-direction: row;
+  align-items: center;
+}
+.statusdot {
+  width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  margin-right: 12px;
+}
+.statusdot-free {
+  background-color: #37c2a0;
+}
+.statusdot-ok {
+  background-color: #37c2a0;
+}
+.statusdot-portal {
+  background-color: #ffb648;
+}
+.statusdot-offline {
+  background-color: #ff6b6b;
+}
+.statusdot-busy {
+  background-color: #8fb7e8;
 }
 .status {
-  font-size: 34px;
+  font-size: 36px;
   font-weight: bold;
-  height: 42px;
+  height: 44px;
 }
 .status-free {
   color: #37c2a0;
@@ -1008,18 +1081,23 @@ export default {
 .status-busy {
   color: #8fb7e8;
 }
+.statusinfo {
+  width: 560px;
+  flex-direction: column;
+  justify-content: center;
+}
 .inforow {
-  height: 18px;
+  height: 20px;
   flex-direction: row;
   margin-top: 2px;
 }
 .infolabel {
-  width: 150px;
+  width: 100px;
   font-size: 14px;
   color: #6f8cb0;
 }
 .infovalue {
-  width: 770px;
+  width: 460px;
   font-size: 14px;
   color: #b8cde8;
   lines: 1;
@@ -1091,11 +1169,11 @@ export default {
   margin-right: 10px;
 }
 .btn-login {
-  width: 120px;
+  width: 130px;
   background-color: #2f7bd9;
 }
 .btn-busy {
-  width: 120px;
+  width: 130px;
   background-color: #274d7c;
 }
 .btn-manage {
@@ -1117,14 +1195,32 @@ export default {
 }
 .msgrow {
   width: 960px;
-  height: 56px;
+  flex: 1;
+  background-color: #0e1d33;
+  flex-direction: row;
+  align-items: center;
   padding-left: 20px;
-  padding-top: 10px;
-  flex-direction: column;
+  padding-right: 20px;
+}
+.msgbar {
+  width: 4px;
+  height: 40px;
+  border-radius: 2px;
+  margin-right: 12px;
+}
+.msgbar-error {
+  background-color: #ff6b6b;
+}
+.msgbar-warn {
+  background-color: #ffb648;
+}
+.msgbar-info {
+  background-color: #2f7bd9;
 }
 .msg {
-  font-size: 17px;
+  font-size: 16px;
   lines: 2;
+  flex: 1;
 }
 .msg-error {
   color: #ff8f8f;

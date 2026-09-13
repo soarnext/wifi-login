@@ -18,11 +18,14 @@
     <div class="inforow">
       <text class="infolabel">认证服务器</text>
       <text class="infovalue">{{ serverShow || '未知' }}</text>
-      <text class="infocount">在线 {{ devices.length }} 台</text>
+      <div class="countwrap">
+        <div class="countdot"></div>
+        <text class="infocount">在线 {{ devices.length }} 台</text>
+      </div>
     </div>
 
     <scroller class="devscroll">
-      <div class="devitem" v-for="(d, i) in devices" :key="i">
+      <div class="devitem" :class="{ 'devitem-self': d.isSelf }" v-for="(d, i) in devices" :key="d.ipstr || i">
         <div class="devmain">
           <text class="devname">{{ d.name || '未知设备' }}</text>
           <text class="devmeta">IP {{ d.ipstr }}  MAC {{ d.clntmac || '—' }}  {{ d.birth || '' }}</text>
@@ -42,6 +45,9 @@
     </scroller>
 
     <div class="msgrow">
+      <div class="msgbar msgbar-error" v-if="msgType === 'error' && msg"></div>
+      <div class="msgbar msgbar-warn" v-if="msgType === 'warn' && msg"></div>
+      <div class="msgbar msgbar-info" v-if="msgType === 'info'"></div>
       <text class="msg msg-error" v-if="msgType === 'error'">{{ msg }}</text>
       <text class="msg msg-warn" v-if="msgType === 'warn'">{{ msg }}</text>
       <text class="msg msg-info" v-if="msgType === 'info'">{{ msg }}</text>
@@ -51,6 +57,8 @@
     <!-- 确认弹层: 替代原生 confirmDialog, 适配横条屏 -->
     <div class="mask" v-if="ask.show">
       <div class="dialog">
+        <text class="dlgtitle">确认操作</text>
+        <div class="dlgdivider"></div>
         <text class="dlgtext">{{ ask.text }}</text>
         <div class="dlgbtns">
           <div class="dlgbtn dlgbtn-cancel" @click="ask.show = false">
@@ -263,7 +271,7 @@ export default {
         self._fails = 0
         self._loadedOnce = true // 成功拿到过列表: 关闭时不再按"没跑通"处理
         var list = Array.isArray(res.data) ? res.data : []
-        self.devices = list.map(function (d) {
+        var mapped = list.map(function (d) {
           return {
             name: d.name || '',
             ipstr: d.ipstr || '',
@@ -273,16 +281,23 @@ export default {
             isSelf: !!self.selfIp && d.ipstr === self.selfIp,
           }
         })
-        log('管理页', '设备列表 ' + self.devices.length + ' 台')
+        /* 列表内容未变化时不替换数组: 15s 轮询下避免整列表重渲染与无谓写盘 */
+        var sig = JSON.stringify(mapped)
+        var changed = sig !== self._lastListSig
+        self._lastListSig = sig
+        if (changed) {
+          self.devices = mapped
+          log('管理页', '设备列表 ' + mapped.length + ' 台')
+        }
         /* 通知主页: 管理页可用 (服务器正常), 不要因连不上而限制后续自动进入 */
         try {
           $falcon.trigger('wifiManageUsable', '1')
         } catch (e) {}
-        if (!self.devices.length) {
+        if (!mapped.length) {
           self.emptyText = '暂无在线设备'
           self.setMsg('当前无在线设备', 'info')
         } else {
-          self.setMsg('共 ' + self.devices.length + ' 台在线设备', 'info')
+          self.setMsg('共 ' + mapped.length + ' 台在线设备', 'info')
         }
       })
     },
@@ -438,7 +453,7 @@ export default {
   align-items: center;
   padding-left: 20px;
   padding-right: 20px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .infolabel {
   width: 130px;
@@ -452,31 +467,46 @@ export default {
   lines: 1;
   text-overflow: ellipsis;
 }
+.countwrap {
+  position: absolute;
+  right: 20px;
+  flex-direction: row;
+  align-items: center;
+}
+.countdot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #37c2a0;
+  margin-right: 6px;
+}
 .infocount {
-  width: 170px;
   font-size: 15px;
   color: #37c2a0;
   text-align: right;
 }
 .devscroll {
   width: 960px;
-  height: 138px;
+  height: 136px;
   padding-left: 16px;
   padding-right: 16px;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 
 /* 注意: 横条屏可用高度只有 266px, 这里用两行紧凑布局而非卡片 */
 .devitem {
   width: 928px;
-  height: 46px;
+  height: 48px;
   background-color: #16324f;
-  border-radius: 8px;
+  border-radius: 10px;
   flex-direction: row;
   align-items: center;
   padding-left: 12px;
   padding-right: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+.devitem-self {
+  background-color: #1c3e60;
 }
 .devmain {
   width: 640px;
@@ -528,19 +558,37 @@ export default {
 .devempty {
   font-size: 17px;
   color: #4a6076;
-  margin-top: 16px;
+  margin-top: 20px;
   text-align: center;
 }
 .msgrow {
   width: 960px;
-  height: 50px;
+  flex: 1;
+  background-color: #0e1d33;
+  flex-direction: row;
+  align-items: center;
   padding-left: 20px;
-  padding-top: 8px;
-  flex-direction: column;
+  padding-right: 20px;
+}
+.msgbar {
+  width: 4px;
+  height: 36px;
+  border-radius: 2px;
+  margin-right: 12px;
+}
+.msgbar-error {
+  background-color: #ff6b6b;
+}
+.msgbar-warn {
+  background-color: #ffb648;
+}
+.msgbar-info {
+  background-color: #2f7bd9;
 }
 .msg {
-  font-size: 17px;
+  font-size: 16px;
   lines: 2;
+  flex: 1;
 }
 .msg-error {
   color: #ff8f8f;
@@ -571,11 +619,23 @@ export default {
   flex-direction: column;
   align-items: center;
 }
+.dlgtitle {
+  font-size: 19px;
+  color: #e8f1fb;
+  font-weight: bold;
+}
+.dlgdivider {
+  width: 484px;
+  height: 1px;
+  background-color: #0d1b30;
+  margin-top: 12px;
+}
 .dlgtext {
   font-size: 20px;
   color: #e8f1fb;
   lines: 2;
   text-align: center;
+  margin-top: 14px;
   margin-bottom: 14px;
 }
 .dlgbtns {

@@ -15,7 +15,7 @@
       </div>
     </div>
     <scroller class="logscroll">
-      <text class="logline" v-for="line in lines">{{ line }}</text>
+      <text class="logline" :class="lineClass(line)" v-for="(line, i) in lines" :key="i">{{ line }}</text>
       <text class="logline logempty" v-if="!lines.length">暂无日志</text>
     </scroller>
     <div class="statusbar">
@@ -67,6 +67,9 @@ export default {
     reload() {
       var self = this
       this._panet.readFile(LOG_PATH).then(function (content) {
+        /* 内容未变化时跳过: 3s 轮询下避免 120 行日志整列表重渲染 */
+        if (content === self._lastContent) return
+        self._lastContent = content
         var all = (content || '').split('\n')
         while (all.length && all[all.length - 1] === '') all.pop()
         var tail = all.slice(-MAX_LINES).reverse()
@@ -77,6 +80,14 @@ export default {
         self.lines = []
         self.statusText = '读取失败: ' + e
       })
+    },
+    /* 按日志 tag/内容着色: 错误红、登录/下线绿、心跳弱化, 便于快速定位 */
+    lineClass(line) {
+      if (/失败|错误|error|timeout|无响应/i.test(line)) return 'logline-err'
+      if (/\[登录\]|\[下线\]/.test(line)) return 'logline-ok'
+      if (/\[心跳\]/.test(line)) return 'logline-dim'
+      if (/\[检测\]|\[复查\]/.test(line)) return 'logline-info'
+      return ''
     },
     clearLog() {
       var self = this
@@ -102,7 +113,7 @@ export default {
 }
 .headbar {
   width: 960px;
-  height: 40px;
+  height: 44px;
   background-color: #16324f;
   flex-direction: row;
   align-items: center;
@@ -111,7 +122,7 @@ export default {
   padding-right: 16px;
 }
 .title {
-  font-size: 24px;
+  font-size: 26px;
   color: #e8f1fb;
   font-weight: bold;
 }
@@ -121,8 +132,8 @@ export default {
 }
 .hbtn {
   width: 90px;
-  height: 28px;
-  border-radius: 14px;
+  height: 32px;
+  border-radius: 16px;
   background-color: #2c5aa0;
   align-items: center;
   justify-content: center;
@@ -138,20 +149,32 @@ export default {
   background-color: #3f5f85;
 }
 .hbtn-text {
-  font-size: 16px;
+  font-size: 17px;
   color: #ffffff;
 }
 .logscroll {
   width: 960px;
-  height: 202px;
+  height: 198px;
   padding-left: 16px;
   padding-right: 16px;
-  padding-top: 6px;
+  padding-top: 8px;
 }
 .logline {
   font-size: 16px;
   color: #b8cde8;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+}
+.logline-err {
+  color: #ff8f8f;
+}
+.logline-ok {
+  color: #7fd8b8;
+}
+.logline-dim {
+  color: #5f7ea6;
+}
+.logline-info {
+  color: #9fc3ee;
 }
 .logempty {
   color: #4a6076;
@@ -160,13 +183,17 @@ export default {
 }
 .statusbar {
   width: 960px;
-  height: 24px;
+  flex: 1;
   background-color: #16324f;
-  justify-content: center;
+  justify-content: flex-end;
   padding-left: 20px;
+  padding-right: 16px;
+  flex-direction: row;
+  align-items: center;
 }
 .statusinfo {
   font-size: 13px;
   color: #6f8cb0;
+  text-align: right;
 }
 </style>

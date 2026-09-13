@@ -21,15 +21,29 @@ function client() {
   return _panet
 }
 
+/* 预建 128 项查找表: 每字符 O(1) 查表替代 TBL.indexOf (O(n)), 响应体越大收益越明显 */
+var B64_INDEX = null
+
+function b64Table() {
+  if (!B64_INDEX) {
+    B64_INDEX = new Int16Array(128)
+    var TBL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    for (var i = 0; i < 128; i++) B64_INDEX[i] = -1
+    for (var j = 0; j < TBL.length; j++) B64_INDEX[TBL.charCodeAt(j)] = j
+  }
+  return B64_INDEX
+}
+
 function b64ToBytes(b64) {
-  var TBL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  var TBL = b64Table()
   var out = []
   var buf = 0
   var bits = 0
   for (var i = 0; i < b64.length; i++) {
-    var c = TBL.indexOf(b64.charAt(i))
-    if (c < 0) continue // 跳过 padding/空白
-    buf = (buf << 6) | c
+    var c = b64.charCodeAt(i)
+    var v = c < 128 ? TBL[c] : -1
+    if (v < 0) continue // 跳过 padding/空白
+    buf = (buf << 6) | v
     bits += 6
     if (bits >= 8) {
       bits -= 8
