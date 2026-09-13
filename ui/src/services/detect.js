@@ -106,6 +106,8 @@ function portalResult(probe, redirectUrl, resp) {
     params: info.params,
     pageTitle: extractTitle(bodyText),
     snippet: bodyText.slice(0, 400),
+    /* 响应头 (小写键): 供适配器 match() 从 Server 等头识别认证类型 */
+    headers: resp ? resp.headers : {},
   }
 }
 

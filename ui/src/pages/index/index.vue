@@ -79,11 +79,19 @@
       <div class="btn btn-busy" v-if="showForm && logging">
         <text class="btn-text">登录中…</text>
       </div>
-      <div class="btn btn-manage" v-if="canLogout" @click="openManagement">
+      <div class="btn btn-manage" v-if="canLogout && canManage" @click="openManagement">
         <text class="btn-text">设备管理</text>
       </div>
       <div class="btn btn-logout" v-if="canLogout" @click="doLogout">
         <text class="btn-text btn-text-logout">下 线</text>
+      </div>
+    </div>
+
+    <!-- 认证类型选择: 自动识别不出时让用户手选适配器 -->
+    <div class="formrow" v-if="showAdapterPick">
+      <text class="picklabel">认证类型</text>
+      <div class="pickbtn" v-for="a in adapters" :key="a.id" @click="pickAdapter(a)">
+        <text class="pickbtn-text" :class="{ 'pickbtn-text-on': activeAdapterId === a.id }">{{ a.name }}</text>
       </div>
     </div>
 
@@ -113,7 +121,7 @@
 
 <script>
 import { checkPortal } from '../../services/detect.js'
-import { loadPortalConf, userLogin, queryAuthStat, logout } from '../../services/portal.js'
+import { all as allAdapters, byId, detectAdapter } from '../../services/portal-adapters/registry.js'
 import { loadAccount, saveAccount } from '../../services/store.js'
 import { wifiSsid } from '../../services/net.js'
 import { log, initLog } from '../../services/logger.js'
@@ -133,8 +141,10 @@ export default {
       serverBase: '',
       portalPage: '',
       deviceIp: '',
-      authType: 'panabit',
-      sceneStr: '',
+      /* 模块化适配框架: 本体不依赖具体协议, 认证流程走 activeAdapter */
+      adapters: allAdapters(), // 已注册的认证适配器 (认证类型选择列表)
+      activeAdapterId: '',
+      showAdapterPick: false, // 未识别出认证类型时让用户手选
       username: '',
       password: '',
       /* 已记住的密码来源SSID: 用于掩码显示与"按网络隔离"提示 */
@@ -153,6 +163,15 @@ export default {
     }
   },
   computed: {
+    /* 当前使用的认证适配器 (由 activeAdapterId 解析; 未选择时为 null) */
+    activeAdapter() {
+      return byId(this.activeAdapterId)
+    },
+    /* 设备管理入口: 适配器提供 listDevices 能力才显示 */
+    canManage() {
+      var a = byId(this.activeAdapterId)
+      return !!(a && a.listDevices)
+    },
     /* 已记住密码的掩码: 不泄露真实长度与内容, 固定 8 位圆点 */
     pwdMask() {
       return this.password ? '\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf\u25cf' : ''
@@ -208,7 +227,8 @@ export default {
         this.pageState = 'portal'
         this.serverBase = DBG.server
         this.serverShow = DBG.server.replace('http://', '')
-        this.authType = 'panabit'
+        this.activeAdapterId = (byId('panabit') || this.adapters[0]).id
+        this._adapterState = { authType: 'panabit' }
         this.showForm = true
         this.startHeartbeat()
         this.setMsg('[调试] 已指向模拟认证服务器', 'warn')
@@ -226,6 +246,7 @@ export default {
         self.remember = acc.remember
         self.ssid = self._ssid || acc.ssid || ''
         self._lastServer = acc.serverBase || ''
+        self._rememberedAdapter = acc.adapter || '' // 该 WiFi 上次成功登录用的适配器
         log('配置', 'wifi=' + (self._ssid || '(未知)') + ' 已存账号=' + (acc.username || '无'))
         self.runCheck()
       })
@@ -312,8 +333,16 @@ export default {
         if (o.username) this.username = String(o.username)
         if (o.password) this.password = String(o.password)
         if (o.remember === '1' || o.remember === 1 || o.remember === true) this.remember = true
-        this.authType = 'panabit'
         this.pageState = 'portal'
+        /* 外部可指定适配器 (adapter=<id>); 未指定时用该 WiFi 记住的, 再退到第一个注册的 */
+        var forced = o.adapter ? byId(String(o.adapter)) : null
+        if (forced) {
+          this.activeAdapterId = forced.id
+        } else if (!this.activeAdapterId) {
+          var remembered = this._rememberedAdapter ? byId(this._rememberedAdapter) : null
+          this.activeAdapterId = (remembered || this.adapters[0]).id
+        }
+        this._adapterState = this._adapterState || {}
         this.showForm = true
         this.showManualServer = false
         this.startHeartbeat()
@@ -380,12 +409,16 @@ export default {
       $falcon.navTo('about', {})
     },
 
-    /* 进入设备管理页: 带上服务器与本机 IP, 管理页直接复用, 不再重复探测 */
+    /* 进入设备管理页: 带上服务器/本机 IP/适配器 ID, 管理页直接复用, 不再重复探测 */
     openManagement() {
       /* 本机 IP 优先取本次检测的 portal 参数 (wlanuserip), 其次取上次记住的 */
       var ip = this.paramOf('wlanuserip') || this._selfIp || this._lastIp || ''
-      log('管理页', '打开: server=' + this.serverBase + ' ip=' + ip)
-      $falcon.navTo('management', { serverBase: this.serverBase, ip: ip })
+      log('管理页', '打开: server=' + this.serverBase + ' ip=' + ip + ' adapter=' + this.activeAdapterId)
+      $falcon.navTo('management', {
+        serverBase: this.serverBase,
+        ip: ip,
+        adapter: this.activeAdapterId,
+      })
       // 切走期间停止心跳, 返回时按需重启
       this.stopHeartbeat()
       /* 注意: 这里不设 _leftAt。管理页在前台时本页 onShow 也可能被系统调用,
@@ -554,33 +587,37 @@ export default {
     },
 
     /*
-     * 会话保活心跳: 网页认证页每 5 秒轮询 query_auth_stat 维持服务器侧
+     * 会话保活心跳: 网页认证页每 5 秒轮询认证状态维持服务器侧
      * 会话 (页面静止几分钟后 token 过期导致"无法登入需刷新")。
      * app 用 30 秒间隔达到同样效果, 同时探测设备是否已在别处完成认证。
+     * 状态查询走 activeAdapter.queryStat; 适配器不支持时心跳静默。
      */
     startHeartbeat() {
       var self = this
       if (this._statTimer) return
       this._statTimer = setInterval(function () {
+        var adapter = self.activeAdapter
         var gen = self._gen || 0
-        queryAuthStat(self.serverBase, {
-          ip: self.paramOf('wlanuserip'),
-          sceneStr: self.sceneStr,
-          type: self.authType,
-        }).then(function (res) {
-          if (gen !== (self._gen || 0)) return
-          if (res.ok && res.data && res.data.stat && res.data.stat != 0) {
-            self.stopHeartbeat()
-            self._lastSyncAt = Date.now()
-            log('心跳', 'stat=' + res.data.stat + ' 已在别处认证')
-            self.pageState = 'ok'
-            self.showForm = false
-            self.canLogout = true
-            self.setMsg('该设备已通过认证，无需登入，可点「设备管理」查看在线设备', 'info')
-          } else if (res.ok) {
-            self._lastSyncAt = Date.now()
-          }
-        })
+        if (!adapter || !adapter.queryStat || !self.serverBase) return
+        adapter
+          .queryStat(self.serverBase, {
+            params: self._params,
+            state: self._adapterState,
+          })
+          .then(function (res) {
+            if (gen !== (self._gen || 0)) return
+            if (res && res.ok && res.stat) {
+              self.stopHeartbeat()
+              self._lastSyncAt = Date.now()
+              log('心跳', 'stat=' + res.stat + ' 已在别处认证')
+              self.pageState = 'ok'
+              self.showForm = false
+              self.canLogout = true
+              self.setMsg('该设备已通过认证，无需登入，可点「设备管理」查看在线设备', 'info')
+            } else if (res && res.ok) {
+              self._lastSyncAt = Date.now()
+            }
+          })
       }, 30000)
     },
     stopHeartbeat() {
@@ -684,12 +721,44 @@ export default {
         } else {
           self.setMsg('检测到需要认证', 'warn')
         }
-        self.afterPortal(det.serverBase, det.params, gen)
+        this.afterPortal(det.serverBase, det.params, det, gen)
       })
     },
 
-    afterPortal(serverBase, params, gen) {
-      var self = this
+    /*
+     * 自动识别认证适配器:
+     *   1) 识别特征评分最高者优先 (registry.detectAdapter)
+     *   2) 识别不出 (全部 0 分) 用该 WiFi 记住的适配器 (上次成功登录所用)
+     *   3) 再不行返回 null, 框架显示"认证类型"选择行让用户手选
+     */
+    _pickAdapter(det) {
+      var ctx = {
+        portalPage: det && det.portalPage,
+        pageTitle: det && det.pageTitle,
+        snippet: det && det.snippet,
+        params: det && det.params,
+        serverBase: this.serverBase || (det && det.serverBase),
+        headers: det && det.headers,
+      }
+      var best = detectAdapter(ctx)
+      if (best && best.score > 0) {
+        log('适配器', '自动识别 ' + best.adapter.id + ' score=' + best.score)
+        return best.adapter
+      }
+      var remembered = this._rememberedAdapter ? byId(this._rememberedAdapter) : null
+      if (remembered) {
+        log('适配器', '识别不出, 用记住的 ' + remembered.id)
+        return remembered
+      }
+      return null
+    },
+
+    /*
+     * 被强制门户拦截后的入口: 提取参数 -> 识别适配器 -> 走该适配器的 loadConf。
+     * loadConf 返回归一化状态 (free/ready/manual/other/error), 框架据此更新 UI;
+     * 协议相关语义全部收口在适配器内。
+     */
+    async afterPortal(serverBase, params, det, gen) {
       var p = params || {}
       this._params = p
       this._selfIp = p.wlanuserip || ''
@@ -709,76 +778,103 @@ export default {
           this.serverShow = ''
           this.serverBase = ''
           this.showManualServer = true
+          this.showAdapterPick = true
           this.showForm = false
-          this.setMsg('已拦截跳转，但未识别到认证服务器地址，请手动输入', 'warn')
+          this.setMsg('已拦截跳转，但未识别到认证服务器地址，请选择认证类型或手动输入', 'warn')
           return
         }
       }
 
+      var adapter = this._pickAdapter(det)
+      if (!adapter) {
+        this.pageState = 'manual'
+        this.showForm = false
+        this.showManualServer = true
+        this.showAdapterPick = true
+        this.setMsg('未识别出认证类型，请点选下方认证类型', 'warn')
+        return
+      }
+      await this.startPortalConf(adapter, serverBase, p, gen)
+    },
+
+    /* 用指定适配器获取配置并按归一化状态更新界面 */
+    async startPortalConf(adapter, serverBase, p, gen) {
+      this.activeAdapterId = adapter.id
+      this._adapterState = {}
       this.serverBase = serverBase
       this.serverShow = serverBase.replace('http://', '')
       this._lastServer = serverBase
-      loadPortalConf(serverBase, {
-        ip: p.wlanuserip || '',
-        vlan: p.vlan || '',
-        mac: p.clientmac || '',
-      }).then(function (res) {
-        if (gen !== self._gen) return
-        if (res.ok && res.code === 200) {
-          // MAC 免认证已通过
-          log('配置', 'code=200 已通过认证 server=' + serverBase)
-          self.pageState = 'ok'
-          self.showForm = false
-          self.canLogout = true
-          self.stopHeartbeat()
-          self.setMsg('该设备已通过认证，无需登入', 'info')
-          /* 已认证: 直接进入设备管理页 (外部调用场景不跳) */
-          self._autoManage()
-          return
+      this.showAdapterPick = false
+      this.setMsg('正在获取 ' + adapter.name + ' 配置…', 'info')
+      var res = await adapter.loadConf(serverBase, p, this._adapterState)
+      if (gen !== this._gen) return
+      if (res.status === 'free') {
+        // MAC 免认证已通过
+        log('配置', '已通过认证 server=' + serverBase)
+        this.pageState = 'ok'
+        this.showForm = false
+        this.canLogout = true
+        this.stopHeartbeat()
+        this.setMsg('该设备已通过认证，无需登入', 'info')
+        /* 已认证: 直接进入设备管理页 (外部调用场景不跳) */
+        this._autoManage()
+        return
+      }
+      if (res.status === 'ready') {
+        this.pageState = 'portal'
+        this.showForm = true
+        this.canLogout = false
+        this._lastSyncAt = Date.now()
+        this.startHeartbeat()
+        if (this.username && this.password) {
+          this.setMsg('需要认证，账号密码已就绪，点击登录', 'warn')
+        } else {
+          this.setMsg('需要认证，请输入账号密码', 'warn')
         }
-        if (res.ok && res.code === 0 && res.data && res.data.policy) {
-          var policy = res.data.policy
-          self.authType = policy.auth1 || 'panabit'
-          self.sceneStr = policy.scene_str || ''
-          self._lastSyncAt = Date.now()
-          log('配置', 'code=0 auth=' + self.authType + ' server=' + serverBase)
-          if (self.authType !== 'panabit') {
-            self.pageState = 'portal'
-            self.showForm = false
-            self.startHeartbeat()
-            self.setMsg('该网络当前认证方式非账号密码，请在网页认证页操作', 'warn')
-            return
-          }
-          self.pageState = 'portal'
-          self.showForm = true
-          self.canLogout = false
-          self.startHeartbeat()
-          if (self.username && self.password) {
-            self.setMsg('需要认证，账号密码已就绪，点击登录', 'warn')
-          } else {
-            self.setMsg('需要认证，请输入账号密码', 'warn')
-          }
-          return
-        }
-        if (res.code === -1) {
-          log('配置', 'server=' + serverBase + ' 无响应: ' + res.msg)
-          // 服务器连不上/响应异常: 地址可能不对, 提供手动输入 (预填当前地址)
-          self.pageState = 'manual'
-          self.showForm = false
-          self.showManualServer = true
-          self.manualServer = self.serverShow
-          self.setMsg('服务器无响应（' + res.msg + '），可手动输入正确地址', 'warn')
-          return
-        }
-        self.pageState = 'portal'
-        self.showForm = true
-        log('配置', 'server=' + serverBase + ' code=' + res.code + ' msg=' + res.msg)
-        self.setMsg(res.msg, 'error')
-      })
+        return
+      }
+      if (res.status === 'other') {
+        this.pageState = 'portal'
+        this.showForm = false
+        this.startHeartbeat()
+        this.setMsg(res.msg || '该网络当前认证方式非账号密码，请在网页认证页操作', 'warn')
+        return
+      }
+      if (res.status === 'manual') {
+        // 服务器连不上/响应异常: 地址可能不对, 提供手动输入 (预填当前地址) + 认证类型选择
+        this.pageState = 'manual'
+        this.showForm = false
+        this.showManualServer = true
+        this.showAdapterPick = true
+        this.manualServer = this.serverShow
+        this.setMsg('服务器无响应（' + (res.msg || '') + '），可手动输入正确地址', 'warn')
+        return
+      }
+      this.pageState = 'portal'
+      this.showForm = true
+      log('配置', 'server=' + serverBase + ' code=' + (res.code == null ? '' : res.code) + ' msg=' + (res.msg || ''))
+      this.setMsg(res.msg || '获取配置失败', 'error')
+    },
+
+    /* 用户手动点选认证类型 (自动识别不出时) */
+    pickAdapter(a) {
+      this.activeAdapterId = a.id
+      this._adapterState = {}
+      this.showAdapterPick = false
+      log('适配器', '手动选择 ' + a.id)
+      if (!this.serverBase) {
+        this.showManualServer = true
+        this.setMsg('已选择 ' + a.name + '，请输入认证服务器地址', 'warn')
+        return
+      }
+      this.showManualServer = false
+      var gen = (this._gen = (this._gen || 0) + 1)
+      this.startPortalConf(a, this.serverBase, this._params || {}, gen)
     },
 
     /* ---- 手动服务器 ---- */
-    /* 自动探测不到/连不上服务器时, 手动输入 IP[:端口] 或主机名 */
+    /* 自动探测不到/连不上服务器时, 手动输入 IP[:端口] 或主机名;
+     * 认证类型也由用户点选 (未选时保留输入的地址, 先让用户选类型) */
     applyManualServer() {
       var v = (this.manualServer || '').replace(/^\s+|\s+$/g, '')
       if (!v) {
@@ -789,12 +885,19 @@ export default {
         this.setMsg('地址格式应为 IP[:端口] 或主机名', 'error')
         return
       }
+      var adapter = this.activeAdapter
+      if (!adapter) {
+        this.showAdapterPick = true
+        this.setMsg('请点选下方认证类型', 'warn')
+        return
+      }
       var base = 'http://' + v
       var gen = (this._gen = (this._gen || 0) + 1)
       this.showManualServer = false
-      log('手动服务器', base)
+      this.showAdapterPick = false
+      log('手动服务器', base + ' adapter=' + adapter.id)
       this.saveServer(base)
-      this.afterPortal(base, {}, gen)
+      this.startPortalConf(adapter, base, this._params || {}, gen)
     },
     saveServer(base) {
       var self = this
@@ -808,9 +911,15 @@ export default {
     },
 
     /* ---- 登录 ---- */
+    /* 会话建立/刷新与失败重试由适配器自理 (协议相关), 框架只调用一次 adapter.login */
     async doLogin() {
       var self = this
       if (this.logging) return
+      var adapter = this.activeAdapter
+      if (!adapter) {
+        this.setMsg('尚未识别认证类型，请先点选', 'warn')
+        return
+      }
       if (!this.serverBase) {
         this.setMsg('尚未获取认证服务器，请先检测', 'warn')
         return
@@ -821,72 +930,31 @@ export default {
       }
       this.logging = true
       var gen = (this._gen = (this._gen || 0) + 1)
-      log('登录', 'user=' + this.username + ' server=' + this.serverBase + ' remember=' + this.remember)
-      var loginOpts = function () {
-        return {
-          authType: self.authType,
-          ip: self.paramOf('wlanuserip'),
-          mac: self.paramOf('clientmac'),
-          code: '',
-          username: self.username,
-          password: self.password,
-          remember: self.remember,
-        }
-      }
-      var syncSession = async function () {
-        // 等价网页端"刷新页面": 重新 load_portal_conf 换取新认证会话
-        var r = await loadPortalConf(self.serverBase, {
-          ip: self.paramOf('wlanuserip'),
-          vlan: self.paramOf('vlan'),
-          mac: self.paramOf('clientmac'),
-        })
-        if (r && r.ok && r.code === 0 && r.data && r.data.policy) {
-          self.authType = r.data.policy.auth1 || 'panabit'
-          self.sceneStr = r.data.policy.scene_str || ''
-        }
-        self._lastSyncAt = Date.now()
-        return r
-      }
-
-      // 1) 登录前刷新会话: 页面静止几分钟后服务器侧 token 过期会导致"无法登入需刷新",
-      //    打字慢的场景(系统输入法)尤其容易踩中, 所以每次登录前都强制同步一次
-      this.setMsg('正在刷新认证会话…', 'info')
-      var sync = await syncSession()
+      log('登录', 'user=' + this.username + ' server=' + this.serverBase + ' adapter=' + adapter.id + ' remember=' + this.remember)
+      this.setMsg('正在认证…', 'info')
+      var res = await adapter.login(this.serverBase, {
+        params: this._params,
+        username: this.username,
+        password: this.password,
+        remember: this.remember,
+        state: this._adapterState,
+      })
       if (gen !== this._gen) return
-      if (sync && sync.code === 200) {
-        this.logging = false
+      this.logging = false
+      log('登录', '结果 code=' + (res.code == null ? '' : res.code) + ' msg=' + (res.msg || ''))
+      if (!res.ok) {
+        this.setMsg(res.msg || '认证失败', 'error')
+        return
+      }
+      if (res.code === 200) {
+        // 登录流程刷新会话时发现已 MAC 免认证通过
         this.stopHeartbeat()
         this.pageState = 'ok'
         this.showForm = false
         this.setMsg('该设备已通过认证，无需登入', 'info')
         return
       }
-
-      // 2) 登录
-      this.setMsg('正在认证…', 'info')
-      var res = await userLogin(this.serverBase, loginOpts())
-      if (gen !== this._gen) return
-
-      // 3) 会话过期类失败(code 非 2/3/255 的应用层错误): 自动刷新会话重试一次
-      if (!res.ok && res.code >= 0 && res.code !== 2 && res.code !== 3 && res.code !== 255) {
-        this.setMsg('认证会话可能已过期，自动刷新后重试…', 'warn')
-        await syncSession()
-        if (gen !== this._gen) return
-        res = await userLogin(this.serverBase, loginOpts())
-        if (gen !== this._gen) return
-      }
-
-      this.logging = false
-      log('登录', '结果 code=' + res.code + ' msg=' + res.msg)
-      if (!res.ok) {
-        if (res.code === 3 && res.data && res.data.left) {
-          this.setMsg('尝试过多，已锁定 ' + res.data.left + ' 秒', 'error')
-        } else {
-          this.setMsg(res.msg || '认证失败', 'error')
-        }
-        return
-      }
-      // 登录成功 → 保存凭据 (按当前 WiFi 名称分别存储) → 复查连通性确认放行
+      // 登录成功 → 保存凭据 (按当前 WiFi 分别存储, 记住所用适配器) → 复查连通性确认放行
       if (this.remember) {
         saveAccount(
           {
@@ -894,16 +962,18 @@ export default {
             password: this.password,
             remember: true,
             serverBase: this.serverBase,
+            adapter: adapter.id,
           },
           this._ssid
         )
-        log('配置', '已记住账号 (wifi=' + (this._ssid || '未知') + ')')
+        log('配置', '已记住账号 (wifi=' + (this._ssid || '未知') + ' adapter=' + adapter.id + ')')
       } else {
         loadAccount(this._ssid).then(function (acc) {
           acc.username = self.username
           acc.password = ''
           acc.remember = false
           acc.serverBase = self.serverBase
+          acc.adapter = adapter.id
           saveAccount(acc, self._ssid)
         })
       }
@@ -946,12 +1016,16 @@ export default {
     /* ---- 下线 ---- */
     doLogout() {
       var self = this
+      var adapter = this.activeAdapter
       if (!this.serverBase) return
+      if (!adapter || !adapter.logout) return
       this.setMsg('正在下线…', 'info')
-      logout(this.serverBase, { ip: this.paramOf('wlanuserip') }).then(function (res) {
-        log('下线', 'code=' + res.code + ' msg=' + res.msg)
-        self.runCheck()
-      })
+      adapter
+        .logout(this.serverBase, { params: this._params, state: this._adapterState })
+        .then(function (res) {
+          log('下线', 'code=' + (res && res.code) + ' msg=' + (res && res.msg))
+          self.runCheck()
+        })
     },
   },
 }
@@ -1146,6 +1220,29 @@ export default {
 }
 .fieldplaceholder {
   color: #555555;
+}
+.picklabel {
+  width: 110px;
+  font-size: 18px;
+  color: #888888;
+}
+.pickbtn {
+  height: 42px;
+  border-radius: 8px;
+  background-color: #1a1a1a;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.pickbtn-text {
+  font-size: 18px;
+  color: #cccccc;
+}
+.pickbtn-text-on {
+  color: #37c2a0;
+  font-weight: bold;
 }
 .remember {
   width: 120px;

@@ -23,6 +23,10 @@
       <text class="row">· 已认证时自动进入设备管理页 (带防空转与冷却策略)</text>
       <text class="row">· 会话过期自动刷新 + 30 秒心跳保活</text>
       <text class="row">· 探测不到服务器时可手动输入 IP:端口</text>
+      <text class="section">适配器</text>
+      <text class="row">· 本体为框架, 认证协议由适配器模块实现 (内置: Panabit, 亦作演示模板)</text>
+      <text class="row">· 添加适配器: services/portal-adapters/ 实现接口并在 registry.js 注册</text>
+      <text class="row">· 自动识别: 按页面特征评分匹配; 识别不出可在界面手动选择</text>
       <text class="section">外部调用</text>
       <text class="row coderow">$falcon.navTo('falcon://{{ appid }}/index', 参数)</text>
       <text class="row coderow">- action=check 检测是否需要登入, 结果经 $falcon.trigger 回调</text>

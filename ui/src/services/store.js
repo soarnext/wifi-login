@@ -47,7 +47,7 @@ function normalizeSsid(ssid) {
 }
 
 function emptySlot() {
-  return { username: '', password: '', remember: false }
+  return { username: '', password: '', remember: false, adapter: '' }
 }
 
 function defaults() {
@@ -59,6 +59,7 @@ function decodeSlot(raw) {
   if (!raw || typeof raw !== 'object') return out
   out.username = typeof raw.username === 'string' ? raw.username : ''
   out.remember = raw.remember === true
+  out.adapter = typeof raw.adapter === 'string' ? raw.adapter : ''
   if (raw.password) {
     try {
       out.password = paAesDecode(raw.password)
@@ -103,6 +104,7 @@ function encodeSlot(slot) {
     username: slot.username || '',
     password: slot.password ? paAesEncode(slot.password) : '',
     remember: slot.remember === true,
+    adapter: slot.adapter || '',
   }
 }
 
@@ -157,7 +159,7 @@ export async function loadAccount(ssid) {
   } else if (key && db.accounts[''] && Object.keys(db.accounts).length === 1) {
     slot = db.accounts['']
   }
-  var out = slot ? { username: slot.username, password: slot.password, remember: slot.remember } : emptySlot()
+  var out = slot ? { username: slot.username, password: slot.password, remember: slot.remember, adapter: slot.adapter } : emptySlot()
   out.serverBase = db.serverBase || ''
   out.ssid = db.ssid || ''
   return out
@@ -175,6 +177,7 @@ export async function saveAccount(acc, ssid) {
     username: acc.username || '',
     password: acc.password || '',
     remember: acc.remember === true,
+    adapter: acc.adapter || '',
   }
   if (acc.serverBase) db.serverBase = acc.serverBase
   return write()

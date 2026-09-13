@@ -74,7 +74,7 @@
 </template>
 
 <script>
-import { loadPortalConf, loadUserList, userOffOne, logout } from '../../services/portal.js'
+import { byId } from '../../services/portal-adapters/registry.js'
 import { log } from '../../services/logger.js'
 
 const REFRESH_MS = 15000
@@ -90,6 +90,8 @@ export default {
       serverBase: '',
       serverShow: '',
       selfIp: '',
+      /* 当前认证适配器 (主页 navTo 时按 ID 传入; 提供 listDevices 才能进本页) */
+      adapter: null,
       devices: [],
       loading: false,
       offing: '', // 正在下线的设备 IP
@@ -109,14 +111,29 @@ export default {
         return
       }
       this._started = true
+      var self0 = this
       var launch = this.readLaunch()
       this.serverBase = launch.serverBase || ''
       this.serverShow = this.serverBase.replace('http://', '')
       this.selfIp = launch.ip || ''
-      log('管理页', '进入 server=' + this.serverBase + ' ip=' + this.selfIp)
+      this.adapter = byId(launch.adapter || '')
+      log('管理页', '进入 server=' + this.serverBase + ' ip=' + this.selfIp + ' adapter=' + (this.adapter ? this.adapter.id : '(无)'))
       if (!this.serverBase) {
         this.emptyText = '未获取到认证服务器'
         this.setMsg('缺少认证服务器地址，请返回首页重新检测', 'error')
+        return
+      }
+      if (!this.adapter || !this.adapter.listDevices) {
+        /* 适配器未提供设备管理能力 (或未识别): 不空等, 提示后返回 */
+        this.emptyText = '该认证类型不支持设备管理'
+        this.setMsg(
+          '当前认证类型（' + (this.adapter ? this.adapter.name : '未识别') + '）不支持设备管理，请返回',
+          'warn'
+        )
+        var t0 = setTimeout(function () {
+          self0.goBack()
+        }, 1500)
+        this._backTimer = t0
         return
       }
       this.bootstrap()
@@ -145,9 +162,9 @@ export default {
       } catch (e) {}
     },
 
-    /* 读取外部传入参数 (主页 navTo 时带的 server/ip) */
+    /* 读取外部传入参数 (主页 navTo 时带的 server/ip/adapter) */
     readLaunch() {
-      var out = { serverBase: '', ip: '' }
+      var out = { serverBase: '', ip: '', adapter: '' }
       try {
         var lo = this.$page && this.$page.loadOptions
         var no = this.$page && this.$page.newOptions
@@ -163,6 +180,7 @@ export default {
         if (!o || typeof o !== 'object') return out
         if (o.serverBase) out.serverBase = String(o.serverBase)
         if (o.ip) out.ip = String(o.ip)
+        if (o.adapter) out.adapter = String(o.adapter)
         return out
       } catch (e) {
         return out
@@ -188,6 +206,7 @@ export default {
         this.serverShow = this.serverBase.replace('http://', '')
       }
       if (o.ip) this.selfIp = String(o.ip)
+      if (o.adapter) this.adapter = byId(String(o.adapter))
       this.reload()
     },
 
@@ -202,27 +221,24 @@ export default {
       return /connect failed|timeout|timed out|errno=|无响应|网络请求失败|EHOSTUNREACH|ECONNREFUSED|ETIMEDOUT/i.test(s)
     },
 
-    /* 首次进入: 先确保会话可用 (load_portal_conf), 再拉设备列表 */
+    /* 首次进入: 先确保会话可用 (适配器提供 sync 时), 再拉设备列表 */
     bootstrap() {
       var self = this
       this.loading = true
       this.setMsg('正在同步认证会话…', 'info')
-      loadPortalConf(this.serverBase, {
-        ip: this.selfIp,
-        vlan: '',
-        mac: '',
-      }).then(function (res) {
+      var pre = this.adapter.sync
+        ? this.adapter.sync(this.serverBase, { ip: this.selfIp }, {})
+        : Promise.resolve({ ok: true })
+      pre.then(function (res) {
         if (res && res.ok && res.code === 200) {
           // MAC 免认证: 无账号会话, 设备列表接口可能仍可用, 继续尝试
-          log('管理页', 'load_portal_conf code=200 (免认证)')
-        } else if (res && res.ok && res.code === 0 && res.data && res.data.policy) {
-          self.selfIp = self.selfIp || ''
+          log('管理页', 'sync code=200 (免认证)')
         } else if (res && res.code === -1) {
           self.loading = false
           self._fails = (self._fails || 0) + 1
           self.setMsg('认证服务器无响应（' + res.msg + '）', 'error')
           self.emptyText = '服务器无响应'
-          /* load_portal_conf 连不上: 会话根本没法建立, 设备列表必然也拿不到。
+          /* sync 连不上: 会话根本没法建立, 设备列表必然也拿不到。
            * 这是最明确的失败信号, 直接视为服务器不可用并退回主页,
            * 不在这里空等 (否则页面会悬空直到被系统回收)。 */
           if (self._isConnFail(res)) {
@@ -237,7 +253,6 @@ export default {
             return
           }
           /* 非网络类错误: 继续尝试拉列表 */
-          self.reload()
         }
         self.reload()
       })
@@ -246,9 +261,13 @@ export default {
     /* 拉取在线设备列表 */
     reload() {
       var self = this
-      if (!this.serverBase) return
+      if (!this.serverBase || !this.adapter) return
       this.loading = true
-      loadUserList(this.serverBase, { ip: this.selfIp }).then(function (res) {
+      this.adapter
+        .listDevices(this.serverBase, {
+          params: { ip: this.selfIp, wlanuserip: this.selfIp },
+        })
+        .then(function (res) {
         self.loading = false
         self._lastLoadAt = Date.now()
         if (!res.ok) {
@@ -270,7 +289,7 @@ export default {
         }
         self._fails = 0
         self._loadedOnce = true // 成功拿到过列表: 关闭时不再按"没跑通"处理
-        var list = Array.isArray(res.data) ? res.data : []
+        var list = Array.isArray(res.list) ? res.list : []
         var mapped = list.map(function (d) {
           return {
             name: d.name || '',
@@ -350,12 +369,12 @@ export default {
     /* ---- 单设备下线 ---- */
     doOffOne(d) {
       var self = this
-      if (!this.serverBase || !d.ipstr) return
+      if (!this.serverBase || !d.ipstr || !this.adapter) return
       this.offing = d.ipstr
       this.setMsg('正在下线 ' + d.ipstr + ' …', 'info')
-      userOffOne(this.serverBase, { addr: d.ipstr }).then(function (res) {
+      this.adapter.offOne(this.serverBase, { addr: d.ipstr }).then(function (res) {
         self.offing = ''
-        log('管理页', 'user_offone ' + d.ipstr + ' code=' + res.code + ' msg=' + res.msg)
+        log('管理页', 'user_offone ' + d.ipstr + ' code=' + (res && res.code) + ' msg=' + (res && res.msg))
         if (!res.ok) {
           self.setMsg('下线失败：' + (res.msg || '未知错误'), 'error')
           self.reload()
@@ -369,23 +388,27 @@ export default {
     /* ---- 全部下线 ---- */
     doOffAll() {
       var self = this
-      if (!this.serverBase) return
+      if (!this.serverBase || !this.adapter) return
       this.setMsg('正在全部下线…', 'info')
-      logout(this.serverBase, { ip: this.selfIp }).then(function (res) {
-        log('管理页', 'user_offall code=' + res.code + ' msg=' + res.msg)
-        if (!res.ok) {
-          self.setMsg('全部下线失败：' + (res.msg || '未知错误'), 'error')
-          return
-        }
-        self.setMsg('已全部下线', 'info')
-        self.devices = []
-        self.emptyText = '已全部下线'
-        // 本机也被下线, 返回主页重新检测
-        var t = setTimeout(function () {
-          self.goBack()
-        }, 900)
-        self._backTimer = t
-      })
+      this.adapter
+        .offAll(this.serverBase, {
+          params: { ip: this.selfIp, wlanuserip: this.selfIp },
+        })
+        .then(function (res) {
+          log('管理页', 'user_offall code=' + (res && res.code) + ' msg=' + (res && res.msg))
+          if (!res.ok) {
+            self.setMsg('全部下线失败：' + (res.msg || '未知错误'), 'error')
+            return
+          }
+          self.setMsg('已全部下线', 'info')
+          self.devices = []
+          self.emptyText = '已全部下线'
+          // 本机也被下线, 返回主页重新检测
+          var t = setTimeout(function () {
+            self.goBack()
+          }, 900)
+          self._backTimer = t
+        })
     },
 
     goBack() {
