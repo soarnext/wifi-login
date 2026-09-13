@@ -2,15 +2,18 @@
 
 本体 (index/management 页) 是一个**认证框架**: 连通性检测、认证页类型自动识别、
 适配器注册表、UI、账号存储、日志都是通用的; 具体的认证协议 (获取配置/登录/
-状态心跳/下线/设备管理) 由本目录下的**适配器模块**实现。
+状态心跳/下线/设备管理) 由 `ui/src/services/portal-adapters/` 下的
+**适配器模块**实现。
 
 适配一个新的 WiFi 登入页 = **新增一个模块文件 + 在 registry.js 注册一行**。
 
 ## 内置适配器 (默认 / 演示模板)
 
-- `panabit.js` — Panabit 上网认证系统, 本项目唯一完成真机验证的实现,
-  同时作为新适配器的**演示模板**。新适配器建议复制它再改协议细节。
-- `adapter-api.js` — 适配器公共工具 (查询串序列化 / GB2312 响应清洗)。
+- `ui/src/services/portal-adapters/panabit.js` — Panabit 上网认证系统,
+  本项目唯一完成真机验证的实现, 同时作为新适配器的**演示模板**。
+  新适配器建议复制它再改协议细节。
+- `ui/src/services/portal-adapters/adapter-api.js` — 适配器公共工具
+  (查询串序列化 / GB2312 响应清洗)。
 
 ## 接口契约 (与 registry.js 注释一致)
 
@@ -64,7 +67,7 @@
 
 - 登录端点: URL / 方法 / 参数表; 每个参数的来源 (本机 IP / MAC / 会话 token /
   检测参数 `wlanuserip`/`clientmac`/`vlan` 是否覆盖)。
-- 密码字段形态: 明文还是加密 (AES/MOND5/RSA...), 加密后 hex 还是 base64,
+- 密码字段形态: 明文还是加密 (AES/MD5/RSA...), 加密后 hex 还是 base64,
   密钥固定在 JS 里还是每次会话下发 / 派生。
 - 返回码语义: 成功 / 账密错误 / 锁定 / 需改密 / 会话过期。
 - 响应编码 (GB2312 只保留 ASCII 对照, 中文文案本地映射)。
@@ -77,7 +80,7 @@
 不要静默降级:
 
 1. **加密超出设备能力**: 框架内置纯 JS 加密只有 AES-128-ECB/ZeroPadding
-   (`../aes.js`); 设备是 QuickJS 运行时 (无 Node/OpenSSL, 大数运算性能弱)。
+   (`ui/src/services/aes.js`); 设备是 QuickJS 运行时 (无 Node/OpenSSL, 大数运算性能弱)。
    - AES-ECB / 简单摘要 (MD5/SHA1) → 可做 (新摘要需新增纯 JS 实现并自测)。
    - RSA / SM2/SM4 / 魔改算法 / 动态密钥交换且派生过程不可复现 → **告知无法制作**
      (纯 JS 不可行, 需 native 扩展另行评估)。
@@ -88,12 +91,13 @@
 
 ### 4. 实现适配器
 
-- 复制 `panabit.js` 为 `<协议>.js`, 改协议细节; 保留接口形态。
+- 复制 `ui/src/services/portal-adapters/panabit.js` 为 `<协议>.js`, 改协议细节; 保留接口形态。
 - `match()`: 给出可从 URL/标题/内容稳定区分的特征并加权评分
   (Panabit 用跳转 URL 的 `wlanuserip=/paip=/iarmdst=` 参数 + 页面字样)。
 - `loadConf()` / `login()`: 严格按上面归一化状态返回; 会话刷新 / 失败重试在
   `login()` 内自理。
-- 复用 `adapter-api.js` 的 `qs()` / `sanitize()`; 协议专属文案映射放适配器内。
+- 复用 `ui/src/services/portal-adapters/adapter-api.js` 的 `qs()` / `sanitize()`;
+  协议专属文案映射放适配器内。
 
 ### 5. 注册
 

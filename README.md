@@ -87,6 +87,8 @@
 ```
 .github/workflows/build.yml   # GitHub Actions: 交叉编译 .so + 打包 AMR + 发布 Release
 CHANGELOG.md                  # 更新日志 (CI 发版时按版本抽取为 Release Notes)
+ADAPTER.md                    # 适配器模块开发指南 (接口契约 + 全流程)
+SKILL.md                      # 配套 skill: 从网站分析到制作适配器全流程
 native/                       # 自研原生模块 panet (固件无系统 http/storage 模块)
   panet/panet.cpp             #   request / writeFile / appendFile / readFile / mkdirs / wifiSsid
   panet/CMakeLists.txt        #   aarch64 交叉编译配置
@@ -102,7 +104,6 @@ ui/                           # 小程序源码 (aiot-vue-cli 工程)
   src/services/net.js         # panet 适配层 (返回值归一化) + wifiSsid()
   src/services/detect.js      # 连通性测试 (并发竞速) + portal 劫持解析 (附 headers)
   src/services/portal-adapters/   # 认证适配器模块 (本体框架消费的稳定接口)
-    README.md                 #   适配器开发指南 (接口契约 + 全流程)
     adapter-api.js            #   适配器公共工具 (查询串序列化 / GB2312 清洗)
     panabit.js                #   Panabit 适配器 (内置默认, 亦作演示模板)
     registry.js               #   注册表 + detectAdapter 自动识别 (特征评分)
@@ -141,7 +142,7 @@ profiles/                     # 设备画像 (X6PRO 真机实测结论)
 注册后: 「认证类型」选择列表与自动识别自动生效; 提供 `listDevices` 则自动显示
 「设备管理」入口。完整的接口契约、自动识别评分机制、开发全流程
 (获取前端代码 → 分析协议 → 阻塞检查 → 实现 → 注册 → 验证) 见
-[`ui/src/services/portal-adapters/README.md`](ui/src/services/portal-adapters/README.md)。
+[ADAPTER.md](ADAPTER.md) (配套 skill 见 [SKILL.md](SKILL.md))。
 
 ## 构建与安装
 
