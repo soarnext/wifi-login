@@ -1,7 +1,11 @@
 # WiFi 网络认证 (有道词典笔)
 
-面向有道词典笔的 WiFi captive portal 登录应用，
-对接 Panabit 上网认证系统的 Portal 协议，实现**账号密码登录**与**在线设备管理**。
+面向有道词典笔的 WiFi captive portal 登录应用。本体是一个**认证框架**:
+连通性检测、认证页类型自动识别、适配器注册表、UI、账号存储、日志都是通用的;
+具体的认证协议 (获取配置 / 登录 / 状态心跳 / 下线 / 设备管理) 由
+**可插拔的适配器模块**实现。内置 [Panabit 上网认证系统](#panabit-portal-api)
+适配器作为默认适配器与演示模板, 开发者可按
+[适配器开发指南](#适配器开发) 适配任意 WiFi 登入页面。
 
 ## 设备兼容性
 
@@ -27,14 +31,25 @@
 
 ## 功能
 
+- **认证框架 + 模块化适配器**: 本体不依赖任何具体认证协议, 协议实现在
+  `ui/src/services/portal-adapters/` 下的适配器模块 (必选接口 `match` / `loadConf` /
+  `login`, 可选 `queryStat` / `logout` / `sync` / `listDevices` / `offOne` / `offAll`);
+  协议语义 (会话刷新 / 失败重试 / 返回码文案) 全部收口在适配器内, 页面不出现协议分支。
+  适配器提供 `listDevices` 才会在界面显示「设备管理」入口。
+- **认证页类型自动识别**: 检测到被强制门户拦截后, 每个适配器按页面特征
+  (跳转 URL 参数 / 页面标题 / 内容 / 响应头) 评分, 取最高分者; 识别不出时回退该
+  WiFi 上次成功登录所用的适配器, 再不行界面显示「认证类型」选择行由用户手选
+  (选完还可手动输入服务器地址)。登录成功会把所用适配器按 WiFi 记住, 下次同 WiFi 优先复用。
 - **连通性测试 (国内探测源)**: 小米 `connect.rom.miui.com/generate_204`、vivo `wifi.vivo.com.cn/generate_204`、华为 `connectivitycheck.platform.hicloud.com/generate_204`。
   - **并发竞速**: 三个探测源同时发起, 首个给出确定结论的直接采纳, 不再逐个串行等待
     (实测正常网络下从 ~240ms+ 降到 ~35ms 量级); 单源失败不判决, 全部失败才判无网络。
   - 网络直连正常 → 提示 **"无需登入"**; 若已认证则**自动进入设备管理页**
   - 被强制门户劫持 → 解析跳转页面 (302 Location 透传 / meta refresh / location.href / 带 `wlanuserip`、`paip` 参数的链接), 展示 **Portal 服务器 IP:端口** 与跳转页面 URL
   - 全部探测失败 → 提示无网络连接
-- **账号密码登录** (Panabit `webauth/user_login`, 密码 AES-128-ECB/ZeroPadding 加密, 密钥 `Panabit@1024_key`, 与网页端 `pa_aes_encode` 一致)
-- **设备管理页** (`management`):
+- **账号密码登录** (由 Panabit 适配器实现: `webauth/user_login`, 密码 AES-128-ECB/ZeroPadding 加密,
+  密钥 `Panabit@1024_key`, 与网页端 `pa_aes_encode` 一致; 登录前自动刷新会话,
+  会话过期类失败自动重试一次, 语义在适配器内自理)
+- **设备管理页** (由适配器提供 `listDevices` / `offOne` / `offAll` 能力; Panabit 适配器实现):
   - **在线设备列表** (`ucenter/load_user_list`): 设备名 / 在线 IP / MAC / 在线时长, 自动标记「本机」
   - **单设备下线** (`ucenter/user_offone`, `addr=<ip>`): 每台设备一个下线按钮, 带确认弹层
   - **全部下线** (`ucenter/user_offall`): 下线后自动返回主页重新检测
@@ -48,9 +63,9 @@
     并通过 `wifiManageClosed` 事件通知主页 (只在真正关闭时才触发返回重检, 管理页在前台
     时不会误判为"已返回")。
 - **记住密码 (按 WiFi 隔离)**: 文件落盘 (`$dataDir/wifi_account.json`), 密码 AES 密文存储。
-  - **每个 WiFi 各存各的账号**: 存储结构 `{ version:2, accounts:{ "<ssid>": {...} }, ssid }`,
-    换到别的网络不会用上一个网络的账号密码; 当前 WiFi 名称由原生 `panet.wifiSsid()`
-    读取 (`iw dev <if> link` → `wpa_cli status` 兜底);
+  - **每个 WiFi 各存各的账号**: 存储结构 `{ version:2, accounts:{ "<ssid>": {...} }, ssid }`
+    (槽位含上次成功登录所用 `adapter`), 换到别的网络不会用上一个网络的账号密码;
+    当前 WiFi 名称由原生 `panet.wifiSsid()` 读取 (`iw dev <if> link` → `wpa_cli status` 兜底);
   - **密码不显明文**: 已记住的密码只显示固定长度圆点掩码, 新输入的密码明文显示 3 秒便于核对;
   - 取不到 WiFi 名称时回退"最近使用"槽位; v1 旧数据自动迁移;
   - 支持一键下线 (`ucenter/user_offall`)。
@@ -85,8 +100,12 @@ ui/                           # 小程序源码 (aiot-vue-cli 工程)
   src/pages/log/log.vue            # 日志页 (最近 120 行, 3s 刷新)
   src/pages/about/about.vue        # 关于页
   src/services/net.js         # panet 适配层 (返回值归一化) + wifiSsid()
-  src/services/detect.js      # 连通性测试 (并发竞速) + portal 劫持解析
-  src/services/portal.js      # Panabit Portal API 客户端 (含设备列表/下线)
+  src/services/detect.js      # 连通性测试 (并发竞速) + portal 劫持解析 (附 headers)
+  src/services/portal-adapters/   # 认证适配器模块 (本体框架消费的稳定接口)
+    README.md                 #   适配器开发指南 (接口契约 + 全流程)
+    adapter-api.js            #   适配器公共工具 (查询串序列化 / GB2312 清洗)
+    panabit.js                #   Panabit 适配器 (内置默认, 亦作演示模板)
+    registry.js               #   注册表 + detectAdapter 自动识别 (特征评分)
   src/services/aes.js         # AES-128-ECB/ZeroPadding 纯 JS 实现
   src/services/ime.js         # 系统输入法 (global.startTextEdit) 封装
   src/services/store.js       # 账号持久化 (按 WiFi/SSID 分桶)
@@ -96,6 +115,9 @@ profiles/                     # 设备画像 (X6PRO 真机实测结论)
 ```
 
 ## Panabit Portal API
+
+以下协议由内置的 **Panabit 适配器** (`panabit.js`) 实现, 作为默认适配器与演示模板
+(其他认证系统按[适配器开发指南](#适配器开发)自行适配)。
 
 端点: `http://<portal服务器>[:端口]/api?<查询参数>`, 响应 JSON, `code==0` 成功, `code==200` 为 MAC 免认证已通过。
 
@@ -107,6 +129,19 @@ profiles/                     # 设备画像 (X6PRO 真机实测结论)
 | ucenter | user_offall | ip | 下线所有 |
 | ucenter | load_user_list | ip | 在线设备列表 (管理页提取) |
 | ucenter | user_offone | addr | 单设备下线 (addr=目标设备在线 IP, 管理页提取) |
+
+## 适配器开发
+
+本体为框架, 适配新的 WiFi 登入页面只需两步:
+
+1. 在 `ui/src/services/portal-adapters/` 新增 `<协议>.js` (建议复制 `panabit.js` 演示模板),
+   实现接口契约 (必选 `match` / `loadConf` / `login`, 其余可选);
+2. 在 `registry.js` 的 `ADAPTERS` 数组注册一行。
+
+注册后: 「认证类型」选择列表与自动识别自动生效; 提供 `listDevices` 则自动显示
+「设备管理」入口。完整的接口契约、自动识别评分机制、开发全流程
+(获取前端代码 → 分析协议 → 阻塞检查 → 实现 → 注册 → 验证) 见
+[`ui/src/services/portal-adapters/README.md`](ui/src/services/portal-adapters/README.md)。
 
 ## 构建与安装
 
@@ -134,6 +169,7 @@ $falcon.navTo('falcon://8001865309000001/index', {
   password: 'xxxx',
   remember: '1',
   auto: '1',
+  adapter: 'panabit',              // 可选: 强制指定适配器, 缺省自动识别/该 WiFi 记住的
 })
 
 // 检测网络是否需要登入 (结果 JSON 经 $falcon.trigger('wifiCheckResult') 回传:
@@ -158,6 +194,7 @@ $falcon.navTo('falcon://8001865309000001')
 | username / password | 预填凭据 (密码明文传输, 仅限调用方可信场景) |
 | remember | `'1'` 记住密码 |
 | auto | `'1'` 且 server/username/password 齐全时自动提交登录 |
+| adapter | 可选, 强制指定适配器 ID (如 `panabit`); 缺省自动识别 / 用该 WiFi 记住的 / 第一个注册的 |
 
 > 外部调用场景 (`action=check` / `action=login`) **不会自动跳转设备管理页**, 以免打断调用方流程;
 > 只有正常启动流程 (无参数) 检测到已认证时才自动进入管理页。
@@ -166,12 +203,14 @@ $falcon.navTo('falcon://8001865309000001')
 
 ### 设备管理页
 
-`management` 页同样可被直接拉起, 传入已有服务器与本机 IP 可跳过重复探测:
+`management` 页同样可被直接拉起, 传入已有服务器与本机 IP 可跳过重复探测;
+`adapter` 需传适配器 ID, 且该适配器提供 `listDevices` 能力才能拉起设备列表:
 
 ```js
 $falcon.navTo('falcon://8001865309000001/management', {
   serverBase: 'http://192.168.64.199:8080',
   ip: '192.168.50.11',   // 本机在线 IP, 用于标记「本机」
+  adapter: 'panabit',    // 适配器 ID (缺省无设备管理能力, 会提示后返回)
 })
 ```
 
@@ -186,5 +225,5 @@ $falcon.navTo('falcon://8001865309000001/management', {
 adb shell "cat /userdisk/xiro/wifi.log"
 ```
 
-记录: 启动、连通性测试结果、Portal 配置解析、登录请求结果、心跳异常认证、手动服务器输入、下线、设备列表与单机下线。
+记录: 启动、连通性测试结果、适配器自动识别/手动选择、Portal 配置解析、登录请求结果、心跳异常认证、手动服务器输入、下线、设备列表与单机下线。
 应用内「日志」按钮可打开日志页 (新日志在上, 3 秒自动刷新, 支持刷新/清空/返回)。
