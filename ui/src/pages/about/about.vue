@@ -17,21 +17,22 @@
       <text class="section">功能</text>
       <text class="row">· WiFi 连通性测试 (国内探测源并发竞速), 直连正常提示无需登入</text>
       <text class="row">· 被强制门户劫持时自动解析 Portal 服务器地址</text>
-      <text class="row">· Panabit Portal 账号密码登录 (密码 AES 加密提交)</text>
-      <text class="row">· 记住密码按 WiFi 隔离: 每个网络各存各的, 密码密文落盘且界面掩码</text>
-      <text class="row">· 设备管理: 在线设备列表 / 单设备下线 / 全部下线</text>
+      <text class="row">· 账号密码登录 (由认证适配器实现, 密码 AES 加密提交)</text>
+      <text class="row">· 记住密码按 WiFi 隔离: 每个网络各存各的 (含所用适配器), 密码密文落盘且界面掩码</text>
+      <text class="row">· 设备管理: 在线设备列表 / 单设备下线 / 全部下线 (按适配器能力提供)</text>
       <text class="row">· 已认证时自动进入设备管理页 (带防空转与冷却策略)</text>
       <text class="row">· 会话过期自动刷新 + 30 秒心跳保活</text>
       <text class="row">· 探测不到服务器时可手动输入 IP:端口</text>
       <text class="section">适配器</text>
       <text class="row">· 本体为框架, 认证协议由适配器模块实现 (内置: Panabit, 亦作演示模板)</text>
-      <text class="row">· 添加适配器: services/portal-adapters/ 实现接口并在 registry.js 注册</text>
-      <text class="row">· 自动识别: 按页面特征评分匹配; 识别不出可在界面手动选择</text>
+      <text class="row">· 自动识别: 按页面特征评分匹配; 识别不出回退该 WiFi 记住的, 再不行界面手选</text>
+      <text class="row">· 添加适配器: portal-adapters/ 实现接口并在 registry.js 注册, 见仓库 ADAPTER.md</text>
       <text class="section">外部调用</text>
       <text class="row coderow">$falcon.navTo('falcon://{{ appid }}/index', 参数)</text>
       <text class="row coderow">- action=check 检测是否需要登入, 结果经 $falcon.trigger 回调</text>
       <text class="row coderow">  (默认事件名 wifiCheckResult, 可用 callback 指定)</text>
-      <text class="row coderow">- action=login 登录 (server/username/password/remember/auto)</text>
+      <text class="row coderow">- action=login 登录 (server/username/password/remember/auto/adapter)</text>
+      <text class="row coderow">  adapter 可选, 强制指定适配器; 缺省自动识别/该 WiFi 记住的</text>
       <text class="row coderow">- action=log 打开日志页</text>
       <text class="section">日志</text>
       <text class="row">/userdisk/xiro/wifi.log (超过 512KB 自动轮转)</text>
