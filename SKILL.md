@@ -36,6 +36,12 @@ description: 为 WiFi 认证小程序 (wifi-login 仓库) 制作新的 Portal �
 用户没说来源时，用一句话问清（哪种方式 / 文件在哪 / 认证页 URL），
 再进入步骤 2。
 
+**提取要求**：必须拿全**登录页与管理页的全部 HTML / CSS / JS**（含内联与外链、
+iframe 子页、登录后动态加载的脚本）——加密实现、参数构造、返回码处理往往藏在
+外链 js 里，漏一个文件就可能误判协议。各平台（Chrome/Edge、Firefox、手机浏览器、
+curl/wget、mitmproxy/Fiddler/Charles）的具体提取步骤与完整性自查清单见
+`ADAPTER.md` 步骤 1。
+
 ### 2. 探查加密能力（硬门禁：设备不支持就告知无法制作）
 
 - 框架/设备的加密基线：仓库 `ui/src/services/aes.js` 当前只内置

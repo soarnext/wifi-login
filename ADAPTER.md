@@ -50,16 +50,98 @@
 
 ### 1. 获取认证页前端代码
 
-来源 (按条件选择, 不确定时询问用户):
+**必须拿全登录页与管理页的全部 HTML / CSS / JS** (含内联 `<style>` / `<script>`
+与所有外链资源), 加密实现、参数构造、返回码处理往往藏在外链 js 里, 漏一个文件
+就可能误判协议。来源按条件选择, 不确定时询问用户:
 
-- **本地文件**: 用户手上已有认证页 HTML/JS (抓包导出 / 另存 / 登入页目录拷贝);
-  直接读文件分析。
-- **浏览器**: 在需要认证的网络下用电脑浏览器打开任意 HTTP 站点, 被强制门户
-  劫持到认证页后查看源码 / 网络请求 (F12), 拿到登录页与它引用的 js。
-- **设备侧**: adb 从词典笔拉取 (设备没有通用浏览器, 能拿到的有限, 只作补充)。
+#### 1.0 先定位认证页 URL
+
+- 连上目标 WiFi 后浏览器访问任意 **HTTP** 站点 (不要用 HTTPS), 被强制门户劫持
+  后的地址栏 URL 就是认证页; 记下它 (含 `?wlanuserip=...` 等查询参数)。
+- 词典笔上也可读 `/userdisk/xiro/status.json` 或日志里的 `portalPage` 字段拿跳转 URL。
+- 管理页地址通常在登录成功后的跳转链接、页面里的"设备管理/在线终端"入口、
+  或同服务器的 `/ucenter`、`/manage` 等路径; 需要凭据登录后才能打开的, 先登录再提取。
+
+#### 1.1 Chrome / Edge (Windows / macOS / Linux)
+
+1. F12 打开 DevTools → **Network** 面板, 勾选 **Preserve log** (防止跳转清记录),
+   过滤框选 **Doc** + **CSS** + **JS** (或 `Fetch/XHR`)。
+2. 刷新认证页, 让所有资源加载完毕。
+3. 提取 HTML: 页面右键 → **查看网页源代码** (`Ctrl+U`) → 全选另存;
+   或 Network 里点第一个文档请求 → **Response** → 右键 Copy value。
+4. 提取全部外链 CSS/JS: Network 面板逐个右键请求 → **Copy → Copy response**
+   另存为文件; 或全选列表行 → 右键 → **Save all as HAR with content**
+   (`.har` 里含每个响应的完整 body, 最省事, 推荐)。
+5. 管理页重复上述步骤 (登录状态下)。
+
+#### 1.2 Firefox
+
+1. F12 → **网络 (Network)** 面板, 勾选"保留日志"。
+2. 刷新后, 地址栏 `Ctrl+U` 看源码另存; 各 CSS/JS 在"网络"面板点请求 →
+   **响应** 标签 → 复制内容另存。
+3. 或页面右键 → **另存为 → 网页，全部** (会连带抓 HTML + 引用的 CSS/JS/图片)。
+
+#### 1.3 手机自带浏览器 / 平板
+
+- Android: 手机连同一认证网络 → 用 Chrome 打开认证页 → 电脑 Chrome 访问
+  `chrome://inspect` → 对手机页面 **inspect** → 按 1.1 的 Network 方式提取。
+- 无电脑时: 手机浏览器菜单里找"发送页面链接/保存页面", 或装"标记浏览器/
+  Via"等支持查看源码的浏览器另存 HTML; CSS/JS 用"查看源代码"里逐个复制。
+- iOS Safari: 装 **Web Inspector** 用 Mac Safari 远程调试; 或借助
+  "a-Shell / iSH" 里的 curl 按 1.4 命令行方式抓。
+
+#### 1.4 命令行 (curl / wget) —— 最完整、推荐批量
+
+适合把登录页 + 管理页整站资源一次抓全 (注意: 部分网关对 UA/Referer 敏感,
+加 `-A` 模拟浏览器; 有跳转链加 `-L`; 带查询参数的 URL 整体用引号包住):
+
+```sh
+# 单个页面 (含跳转链)
+curl -sL -A "Mozilla/5.0" "http://<portal>/portal.html?wlanuserip=..." -o login.html
+
+# 整页资源 (HTML + 它引用的 CSS/JS/图片, 保持目录结构, 适合登录页/管理页各抓一次)
+wget -p -k -nH --cut-dirs=1 -A "Mozilla/5.0" \
+     "http://<portal>/portal.html?wlanuserip=..."
+wget -p -k -nH --cut-dirs=1 -A "Mozilla/5.0" \
+     "http://<portal>/ucenter.html"
+```
+
+`wget -p` 会顺带下载 HTML 里 `<link>` / `<script src>` / `<img>` 引用的全部资源;
+但**动态 `document.createElement('script')`、`import()`、登录后才加载的 js 抓不到**,
+这类必须配合 1.1/1.2 的浏览器 Network 面板 (HAR) 补齐。
+
+#### 1.5 抓包工具 (mitmproxy / Fiddler / Charles / HttpCanary)
+
+适合: 页面被网关按 UA 拒绝、HTTPS 认证页、或想同时看清登录请求与响应。
+
+- **mitmproxy**: `mitmproxy --mode regular` → 浏览器走代理访问认证页 →
+  对每个请求按 `e` 导出 response body; 或 `mitmdump -w flows.mitm` 全量存盘后解析。
+- **Fiddler**: 会话列表全选 → 右键 → **Export Sessions** → 选 "Web Archive" 或
+  逐条 "Response → Saved to file"。
+- **Charles**: 右键 → **Export** (支持 .chls / 逐条 Save Response)。
+- 手机端 **HttpCanary / Stream**: 抓 HTTPS 需装证书, 导出 HAR。
+
+#### 1.6 本地文件 / 设备侧
+
+- 用户已抓包导出 (HAR / .chls / 另存网页目录) 或拿到网关服务器上的页面目录
+  (如 `登入/index.html` + `assert/*.js`、`管理/index.html`): 直接读文件分析。
+- 词典笔 (设备侧) 没有通用浏览器, 只能作为补充: 用本应用日志里的 `portalPage`
+  拿到 URL 后, 仍需在电脑上按上述方式提取。
+
+#### 1.7 提取完整性自查清单
+
+对照检查, 缺一不可:
+
+- [ ] 登录页 HTML (含内联 `<style>` / `<script>`)
+- [ ] 登录页引用的**全部**外链 `.css`
+- [ ] 登录页引用的**全部**外链 `.js` (加密函数、表单提交、返回码处理都在这里)
+- [ ] 管理页 HTML + 其全部 CSS/JS (设备列表 / 下线接口在此)
+- [ ] 页面里 iframe 引入的子页面
+- [ ] 动态加载的脚本 (HAR 里能看到实际请求, `wget -p` 抓不到的那批)
+- [ ] 若认证页有中文: 记录响应编码 (多为 GB2312/GBK), 提取时别转码破坏字节
 
 需要拿到: 登录页 HTML (表单字段/内联跳转逻辑) + 它引用的全部 js
-(加密实现 / 登录提交 / 返回码处理)。
+(加密实现 / 登录提交 / 返回码处理); 管理页同理 (列表/下线端点)。
 
 ### 2. 分析认证协议
 
