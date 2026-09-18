@@ -97,6 +97,36 @@ function headersToMap(lines) {
 }
 
 /*
+ * JS 层超时兜底: 实测部分网络条件下原生 request 会挂起不返回
+ * (固件层 timeout 参数不可靠), 用竞速定时器保证调用方一定能拿到结果,
+ * 否则检测/登录/设备列表会永久停在"进行中"。
+ */
+function raceTimeout(promise, ms) {
+  return new Promise(function (resolve, reject) {
+    var done = false
+    var timer = setTimeout(function () {
+      if (done) return
+      done = true
+      reject(new Error('请求超时 (' + Math.round(ms / 1000) + 's)'))
+    }, ms)
+    promise.then(
+      function (v) {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        resolve(v)
+      },
+      function (e) {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        reject(e)
+      }
+    )
+  })
+}
+
+/*
  * 发起请求, 永不 throw。
  * 返回: { ok, statusCode, headerLines, headers(小写键 map), body: Uint8Array, text: latin1, error }
  */
@@ -106,7 +136,7 @@ export async function request(opts) {
   var timeout = opts.timeout || 8
   var res
   try {
-    res = await client().request(url, method, timeout)
+    res = await raceTimeout(client().request(url, method, timeout), timeout * 1000 + 500)
   } catch (e) {
     return {
       ok: false,

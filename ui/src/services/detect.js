@@ -18,6 +18,11 @@
  *    谁先给出确定结论就用谁, 正常网络下耗时 ≈ 单个请求 RTT。
  *  - 失败 (error) 不算结论, 继续等其他探测源, 全部失败才判 offline。
  *  - 支持 abort: 页面切前台/离开时可主动取消, 避免残留请求回来后覆盖新状态。
+ *
+ * 卡死防护 (实测部分网络下原生 request 会挂起不返回, 固件层超时不可靠):
+ *  - 全局兜底 guard: 单源超时后再宽限一段时间, 到点无论请求是否返回都强制判决,
+ *    界面不会永久停在"正在检测…"。
+ *  - abort 轮询: 取消标记置位后立即结束本次探测, 不必等挂起的请求自然返回。
  */
 
 import { request } from './net.js'
@@ -27,7 +32,9 @@ var PROBES = [
   { name: 'vivo', url: 'http://wifi.vivo.com.cn/generate_204' },
   { name: '华为', url: 'http://connectivitycheck.platform.hicloud.com/generate_204' },
 ]
-var TIMEOUT = 5
+var TIMEOUT = 3.5 // 单源超时(秒); 全失败判 offline 的最坏耗时即此值
+var GUARD_EXTRA_MS = 1200 // 全局兜底宽限: 单源超时后仍未返回则强制判决
+var ABORT_POLL_MS = 250 // abort 轮询间隔
 
 /*
  * 返回:
@@ -41,39 +48,58 @@ var TIMEOUT = 5
  *
  * opts.signal: 可选, { aborted: bool } 形式的取消标记 (页面离开/重新检测时置位),
  *   置位后不再采纳迟到的响应, 返回 status='aborted'。
+ * opts.timeout: 可选, 覆盖单源超时秒数 (测试用)。
  */
 export async function checkPortal(opts) {
   var o = opts || {}
   var signal = o.signal || null
+  var timeoutSec = o.timeout || TIMEOUT
   var aborted = function () {
     return !!(signal && signal.aborted)
   }
 
   var settled = false
   var pending = PROBES.length
+  var errors = [] // 各源失败原因, 汇总进 offline 结果便于日志定位
 
   var result = await new Promise(function (resolve) {
+    var guard = null
+    var abortWatch = null
     var finish = function (r) {
       if (settled) return
       settled = true
+      if (guard) clearTimeout(guard)
+      if (abortWatch) clearInterval(abortWatch)
       resolve(r)
     }
+    var offlineNow = function () {
+      var off = offlineResult()
+      off.error = errors.length ? errors.join('; ') : '探测超时无响应'
+      finish(off)
+    }
+    /* 全局兜底: 任一探测源请求挂起 (原生层不返回) 时, 到点强制判决 */
+    guard = setTimeout(function () {
+      if (aborted()) return finish({ status: 'aborted' })
+      offlineNow()
+    }, timeoutSec * 1000 + GUARD_EXTRA_MS)
+    /* abort 轮询: 页面切走/重新检测时立即结束, 不等挂起的请求 */
+    abortWatch = setInterval(function () {
+      if (aborted()) finish({ status: 'aborted' })
+    }, ABORT_POLL_MS)
+
     /* 所有探测源并发发起; error 不判决, 等其它源或全部失败 */
     for (var i = 0; i < PROBES.length; i++) {
       ;(function (probe) {
-        request({ url: probe.url, timeout: TIMEOUT }).then(function (r) {
+        request({ url: probe.url, timeout: timeoutSec }).then(function (r) {
           if (aborted()) return finish({ status: 'aborted' })
           var c = classify(r)
           if (c.kind === 'redirect') return finish(portalResult(probe.name, c.url, r))
           if (c.kind === 'empty') return finish(freeResult(probe.name))
           if (c.kind === 'content') return finish(portalResult(probe.name, extractRedirect(r.text), r))
           /* error: 记录后继续等其它源 */
+          errors.push(probe.name + ': ' + (r.error || '无响应'))
           pending--
-          if (pending === 0) {
-            var off = offlineResult()
-            off.error = probe.name + ': ' + (r.error || '无响应')
-            finish(off)
-          }
+          if (pending === 0) offlineNow()
         })
       })(PROBES[i])
     }
