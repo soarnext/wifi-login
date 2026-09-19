@@ -695,6 +695,12 @@ export default {
             self.serverBase = self._lastServer
             self.serverShow = self._lastServer.replace('http://', '')
             self.canLogout = true
+            /* 免认证/已认证状态进管理页同样需要适配器:
+             * 用该 WiFi 记住的 (缺省回退第一个注册的), 否则管理页会因无适配器而拒绝 */
+            if (!self.activeAdapterId) {
+              var remembered = self._rememberedAdapter ? byId(self._rememberedAdapter) : null
+              self.activeAdapterId = (remembered || self.adapters[0]).id
+            }
             if (self._autoManage()) return
           } else {
             self.serverBase = ''
@@ -721,7 +727,8 @@ export default {
         } else {
           self.setMsg('检测到需要认证', 'warn')
         }
-        this.afterPortal(det.serverBase, det.params, det, gen)
+        /* 注意: 这里在 then 回调内, 必须用 self (this 不是 Vue 实例, 会抛错被静默吞掉) */
+        self.afterPortal(det.serverBase, det.params, det, gen)
       })
     },
 
@@ -759,6 +766,19 @@ export default {
      * 协议相关语义全部收口在适配器内。
      */
     async afterPortal(serverBase, params, det, gen) {
+      try {
+        await this._afterPortal(serverBase, params, det, gen)
+      } catch (e) {
+        /* async 方法内异常若无捕获会静默丢失, 界面会卡在"正在检测…", 这里兜底上报 */
+        log('适配器', 'afterPortal 异常: ' + (e && e.message ? e.message : e))
+        this.pageState = 'manual'
+        this.showManualServer = true
+        this.showAdapterPick = true
+        this.setMsg('处理认证页时出错，请手动选择认证类型或输入服务器地址', 'error')
+      }
+    },
+
+    async _afterPortal(serverBase, params, det, gen) {
       var p = params || {}
       this._params = p
       this._selfIp = p.wlanuserip || ''
@@ -785,6 +805,7 @@ export default {
         }
       }
 
+      log('适配器', '开始识别 serverBase=' + serverBase)
       var adapter = this._pickAdapter(det)
       if (!adapter) {
         this.pageState = 'manual'
