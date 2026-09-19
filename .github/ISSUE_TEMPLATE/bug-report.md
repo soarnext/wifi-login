@@ -30,6 +30,7 @@ labels: bug
 
 - [ ] 我已搜索过 [Issues](../../issues), 没有找到相同问题
 - [ ] 找到了相关 Issue: # (填写编号)
+- [ ] 是否查看[README](README.md)
 
 ## 日志 (最重要, 请务必提供)
 
