@@ -23,8 +23,9 @@
       <text class="section">开源</text>
       <text class="row coderow">github.com/soarnext/wifi-login</text>
       <text class="section">设备兼容性</text>
-      <text class="row">· 有道词典笔 X6PRO: 已实测 (唯一完成真机验证的机型)</text>
-      <text class="row">· 其他机型: 未验证, 遇到问题请附机型/固件与日志提交 Issues 或 PR</text>
+      <text class="row">· 有道词典笔 X6PRO (RK3562): 已实测, 使用 -rk 产物</text>
+      <text class="row">· CVITEK (RISC-V) 机型: 已适配待真机验证, 使用 -cvi 产物</text>
+      <text class="row">· 遇到问题请附机型/固件与日志提交 Issues 或 PR</text>
     </scroller>
     <div class="statusbar">
       <text class="statusinfo">开源: github.com/soarnext/wifi-login  |  仅 X6PRO 实测, 其他机型请提 Issues / PR</text>

@@ -58,15 +58,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install -C ./ui
 
-      - name: Package AMR (production quickjs)
+      # ---- RK 版 (RK3562 / aarch64, 含自研 panet 原生库) ----
+      - name: Package AMR (RK3562 / aarch64)
         run: pnpm -C ui package
+
+      # ---- CVI 版 (CVITEK / RISC-V C906, 用固件原生 http/system_kv 模块) ----
+      # 平台差异全部收在 services/platform/ 下: 构建前用 CVI 实现覆盖对应服务文件,
+      # 并去掉自研 panet .so (该平台自带 $jsapi/http 等原生模块, 见 ADVANCED/CVI 说明)
+      - name: Package AMR (CVI / RISC-V)
+        run: |
+          set -euo pipefail
+          APPID=$(node -p "require('./ui/package.json').appid")
+          VER=$(node -p "require('./ui/package.json').version")
+          VN=${VER//./_}
+          mkdir -p out
+          cp -f "ui/${APPID}.${VN}.amr" "out/${APPID}.${VN}-rk.amr"
+          cp -f ui/src/services/platform/net-cvi.js    ui/src/services/net.js
+          cp -f ui/src/services/platform/store-cvi.js  ui/src/services/store.js
+          cp -f ui/src/services/platform/logger-cvi.js ui/src/services/logger.js
+          rm -f ui/libs/*.so
+          pnpm -C ui package
+          cp -f "ui/${APPID}.${VN}.amr" "out/${APPID}.${VN}-cvi.amr"
+          ls -la out/
 
       - name: Collect AMR
         run: |
-          mkdir -p out
-          find . -name '*.amr' -type f
-          find . -name '*.amr' -type f -exec cp -f {} ./out/ \;
+          set -euo pipefail
           ls -la out/
+          COUNT=$(ls out/*.amr | wc -l)
+          [ "$COUNT" -ge 2 ] || { echo "expected 2 AMR (rk + cvi), got $COUNT"; exit 1; }
 
       - name: Upload AMR artifact
         uses: actions/upload-artifact@v4

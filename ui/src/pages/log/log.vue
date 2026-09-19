@@ -25,9 +25,9 @@
 </template>
 
 <script>
-import { Panet } from 'panet'
+/* 日志读写统一走 logger 服务: RK 版落盘文件, CVI 版为内存缓冲, 本页平台无关 */
+import { readLog, clearLog as clearLogFile } from '../../services/logger.js'
 
-const LOG_PATH = '/userdisk/xiro/wifi.log'
 const MAX_LINES = 120
 
 export default {
@@ -40,10 +40,7 @@ export default {
   },
   methods: {
     onShow() {
-      if (!this._started) {
-        this._started = true
-        this._panet = typeof Panet === 'function' ? new Panet() : Panet
-      }
+      this._started = true
       this.reload()
       if (!this._timer) {
         var self = this
@@ -66,7 +63,7 @@ export default {
     },
     reload() {
       var self = this
-      this._panet.readFile(LOG_PATH).then(function (content) {
+      readLog().then(function (content) {
         /* 内容未变化时跳过: 3s 轮询下避免 120 行日志整列表重渲染 */
         if (content === self._lastContent) return
         self._lastContent = content
@@ -91,11 +88,14 @@ export default {
     },
     clearLog() {
       var self = this
-      this._panet.writeFile(LOG_PATH, '').then(function () {
-        self.reload()
-      }).catch(function (e) {
-        self.statusText = '清空失败: ' + e
-      })
+      clearLogFile()
+        .then(function () {
+          self._lastContent = null // 清空后强制刷新
+          self.reload()
+        })
+        .catch(function (e) {
+          self.statusText = '清空失败: ' + e
+        })
     },
     goBack() {
       this.$page.finish()

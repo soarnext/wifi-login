@@ -124,9 +124,8 @@
 import { checkPortal } from '../../services/detect.js'
 import { all as allAdapters, byId, detectAdapter } from '../../services/portal-adapters/registry.js'
 import { loadAccount, saveAccount } from '../../services/store.js'
-import { wifiSsid } from '../../services/net.js'
+import { wifiSsid, writeStatusFile } from '../../services/net.js'
 import { log, initLog } from '../../services/logger.js'
-import { Panet } from 'panet'
 import { SystemIme } from '../../services/ime.js'
 
 /* 管理页判定"服务器不可用"后, 这段时间内不再自动进入 (用户手动重检可立即解除) */
@@ -518,12 +517,10 @@ export default {
           p2(d.getMinutes()) +
           ':' +
           p2(d.getSeconds())
-        this._panet = this._panet || (typeof Panet === 'function' ? new Panet() : Panet)
-        this._panet
-          .writeFile('/userdisk/xiro/status.json', JSON.stringify(det))
-          .catch(function (e) {
-            log('状态', 'status.json 写入失败: ' + e)
-          })
+        /* 写盘能力平台相关 (RK 写 status.json; CVI 无文件模块为 no-op), 由平台层提供 */
+        writeStatusFile(JSON.stringify(det)).catch(function (e) {
+          log('状态', 'status.json 写入失败: ' + e)
+        })
       } catch (e) {
         log('状态', 'writeStatus 同步异常: ' + e)
       }

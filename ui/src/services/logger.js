@@ -66,3 +66,22 @@ export function log(tag, msg) {
       .catch(function () {})
   } catch (e) {}
 }
+
+/* 供日志页读取全文 (CVI 版为内存缓冲, 接口一致) */
+export async function readLog() {
+  try {
+    var raw = await client().readFile(LOG_PATH)
+    return raw || ''
+  } catch (e) {
+    return ''
+  }
+}
+
+export async function clearLog() {
+  try {
+    await client().writeFile(LOG_PATH, '')
+    return true
+  } catch (e) {
+    return false
+  }
+}

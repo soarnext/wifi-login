@@ -191,3 +191,12 @@ export async function wifiSsid() {
     return ''
   }
 }
+
+/*
+ * 检测结果机器可读落盘 (RK: /userdisk/xiro/status.json, 供其他程序读取)。
+ * CVI 平台无文件模块, 对应实现为 no-op; 平台相关落在本层, 页面不直接依赖 panet。
+ */
+export async function writeStatusFile(content) {
+  await client().writeFile('/userdisk/xiro/status.json', content)
+  return true
+}

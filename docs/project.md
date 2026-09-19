@@ -30,6 +30,10 @@ ui/                           # 小程序源码 (aiot-vue-cli 工程)
     adapter-api.js            #   适配器公共工具 (查询串序列化 / GB2312 清洗)
     panabit.js                #   Panabit 适配器 (内置默认, 亦作演示模板)
     registry.js               #   注册表 + detectAdapter 自动识别 (特征评分)
+  src/services/platform/      # CVI (CVITEK / RISC-V) 平台实现
+    net-cvi.js                #   网络: 固件原生 $jsapi/http 模块
+    store-cvi.js              #   存储: 固件原生 $jsapi/system_kv 键值
+    logger-cvi.js             #   日志: 内存缓冲 (无文件模块)
   src/services/aes.js         # AES-128-ECB/ZeroPadding 纯 JS 实现
   src/services/ime.js         # 系统输入法 (global.startTextEdit) 封装
   src/services/store.js       # 账号持久化 (按 WiFi/SSID 分桶)
@@ -41,9 +45,13 @@ profiles/                     # 设备画像 (X6PRO 真机实测结论)
 ## 构建
 
 GitHub Actions 云端打包 (推送 `main` 或打 `v*` 标签即触发; 打标签时构建完成后
-自动创建 Release 并上传 AMR)。流程: 交叉编译 `libjsapi_panet.so` (aarch64) →
-`pnpm install -C ./ui` → `pnpm -C ui package` (`aiot-cli -c -q -p` 产出 QuickJS
-生产包) → 上传/发布。
+自动创建 Release 并上传 AMR)。一次构建产出**两个平台**的产物:
+
+1. **RK 版** (`-rk.amr`): 交叉编译 `libjsapi_panet.so` (aarch64) → `pnpm install -C ./ui`
+   → `pnpm -C ui package`;
+2. **CVI 版** (`-cvi.amr`): 用 `ui/src/services/platform/` 下的 CVI 实现覆盖
+   `services/net.js` / `store.js` / `logger.js` (改用固件原生 `$jsapi/http` /
+   `system_kv` 模块), 移除自研 `.so` 后再打包。
 
 本地构建 (需 Node + pnpm):
 
@@ -51,10 +59,18 @@ GitHub Actions 云端打包 (推送 `main` 或打 `v*` 标签即触发; 打标�
 pnpm install -C ./ui
 pnpm -C ui build          # debug AMR (aiot-cli -p)
 pnpm -C ui package        # 生产 QuickJS AMR (aiot-cli -c -q -p)
+
+# 本地构建 CVI 版 (模拟 CI 步骤)
+cp ui/src/services/platform/net-cvi.js    ui/src/services/net.js
+cp ui/src/services/platform/store-cvi.js  ui/src/services/store.js
+cp ui/src/services/platform/logger-cvi.js ui/src/services/logger.js
+rm -f ui/libs/*.so
+pnpm -C ui package        # 产物为 CVI 版; 记得用 git checkout 还原三个服务文件
 ```
 
 版本号在 `ui/package.json` 与 `ui/src/services/version.js` 两处同步,
-产物名为 `<appid>.<主>_<次>_<修>.amr` (如 `8001865309000001.1_1_0.amr`)。
+产物名为 `<appid>.<主>_<次>_<修>.amr` (如 `8001865309000001.1_2_0.amr`),
+Release 资产按平台加 `-rk` / `-cvi` 后缀。
 
 ## 安装
 

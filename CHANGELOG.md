@@ -4,6 +4,31 @@
 
 ---
 
+## [1.2.0] - 2026-09-19
+
+### 新增
+
+- **CVI (CVITEK / RISC-V C906) 机型适配**: 服务层新增平台实现层
+  (`ui/src/services/platform/`), CVI 平台使用固件原生 `$jsapi/http` (网络请求) 与
+  `$jsapi/system_kv` (账号存储) 模块替代自研 panet 原生库, 页面/UI/适配器代码完全复用;
+  依据官方引擎库 [yocop/iot_miniapp_sdk](https://gitee.com/yocop/iot_miniapp_sdk) 分析实现,
+  **尚无 CVI 真机验证**
+- **Release 产物按平台区分**: `...-rk.amr` (RK3562 / X6PRO) 与 `...-cvi.amr`
+  (CVITEK / RISC-V 机型), CI 一次构建同时产出两个平台
+
+### 变更
+
+- 检测状态写盘与日志页改为经平台服务层调用 (页面不再直接依赖 panet), 多平台复用的必要重构;
+  RK 版功能与行为不变
+
+### 已知限制 (CVI 版)
+
+- 无文件 JS 模块: 运行日志为内存缓冲 (应用内可看, 重启清空), 不写 status.json
+- 无"当前连接 SSID"查询接口: 记忆密码回退"最近使用"槽位 (按 WiFi 隔离的粒度降低)
+- 详见 README「设备兼容性与平台」
+
+---
+
 ## [1.1.1] - 2026-09-19
 
 ### 修复

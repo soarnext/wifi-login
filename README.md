@@ -118,16 +118,20 @@ token 过期会提示"无法登入需刷新"。本应用:
 
 ## 快速开始
 
-从 [Releases](https://github.com/soarnext/wifi-login/releases) 下载最新 AMR, 安装:
+从 [Releases](https://github.com/soarnext/wifi-login/releases) 下载**对应平台**的 AMR
+(`-rk` 给 RK3562 机型 / `-cvi` 给 CVITEK 机型), 安装:
 
 ```sh
-adb push 8001865309000001.1_1_0.amr /data/local/tmp/
-adb shell "miniapp_cli install /data/local/tmp/8001865309000001.1_1_0.amr"
+# RK3562 (X6PRO)
+adb push 8001865309000001.1_2_0-rk.amr /data/local/tmp/
+adb shell "miniapp_cli install /data/local/tmp/8001865309000001.1_2_0-rk.amr"
 adb shell "miniapp_cli start 8001865309000001"
+
+# CVITEK (RISC-V 机型): 换用 -cvi 后缀的产物
 ```
 
 > 该固件 `miniapp_cli start <appid>` 不带 `--page` 才进主页。
-> 推送 `main` 或打 `v*` 标签会触发 GitHub Actions 自动构建并发布 Release。
+> 推送 `main` 或打 `v*` 标签会触发 GitHub Actions 自动构建**两个平台**的产物并发布 Release。
 
 ## 文档导航
 
@@ -140,15 +144,33 @@ adb shell "miniapp_cli start 8001865309000001"
 | [docs/project.md](docs/project.md) | 工程结构、构建 (CI 与本地)、版本与产物命名 |
 | [CHANGELOG.md](CHANGELOG.md) | 更新日志 (CI 发版时按版本抽取为 Release Notes) |
 
-## 设备兼容性
+## 设备兼容性与平台
 
-| 机型 | 状态 | 说明 |
+本应用支持两个硬件平台, **页面/UI/适配器代码完全一致**, 差异全部收在
+`ui/src/services/platform/` 平台实现层; CI 为两个平台分别构建产物并区分命名。
+
+| 平台 | 机型 | 状态 | Release 产物 |
+| --- | --- | --- | --- |
+| **RK3562** (ARM / aarch64) | 有道词典笔 X6PRO | ✅ 已实测 | `<appid>.<版本>-rk.amr` |
+| **CVITEK** (RISC-V C906) | 搭载 CVI 芯片的机型 (如词典笔 X7PRO 等) | ⚠️ 代码就绪, **待真机验证** | `<appid>.<版本>-cvi.amr` |
+
+平台差异对照:
+
+| 能力 | RK 版 | CVI 版 |
 | --- | --- | --- |
-| **有道词典笔 X6PRO** | ✅ 已实测 | 本项目唯一完成真机验证的机型, 开发与联调均在其上进行 |
-| 其他有道词典笔机型 | ⚠️ 未验证 | 未做过适配测试, 不保证可用 |
+| 网络请求 | 自研 `panet` 原生库 (随包打进 `.so`) | 固件原生 `$jsapi/http` 模块 |
+| 账号存储 | 文件 `$dataDir/wifi_account.json` | 原生 `$jsapi/system_kv` 键值存储 |
+| 运行日志 | 落盘 `/userdisk/xiro/wifi.log` | 内存缓冲 (应用内日志页可看, 重启清空) |
+| 状态写盘 | `/userdisk/xiro/status.json` | 无文件模块, 跳过 |
+| WiFi 名称 (按网隔离存储) | 原生 `panet.wifiSsid()` | 无对应 API, 回退"最近使用"槽位 |
+| 页面 / 适配器 / 输入法 | 同一套代码 | 同一套代码 |
 
-本应用依赖固件私有能力 (自研原生模块 `panet`、系统输入法 `global.startTextEdit`、
-960×266 横条屏布局), 不同机型/固件版本之间可能存在差异。
+CVI 适配依据官方引擎库 [yocop/iot_miniapp_sdk](https://gitee.com/yocop/iot_miniapp_sdk)
+（RISC-V C906 平台, 与 RK 版同为 Falcon 引擎）分析实现, 尚无真机验证;
+CVI 机型用户请下载 `-cvi` 后缀产物, 遇到问题附机型与日志提 Issue。
+
+本应用依赖固件私有能力 (原生 JSAPI、系统输入法 `global.startTextEdit`、960×266 横条屏布局),
+不同机型/固件版本之间可能存在差异。
 
 ## 反馈与贡献
 
