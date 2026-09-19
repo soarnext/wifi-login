@@ -19,7 +19,8 @@
     </div>
     <div class="divider"></div>
 
-    <div class="statusarea" @click="runCheck(null, true)">
+    <!-- 状态区不再绑定点击重检: 只有顶栏「重新检测」按钮会触发检测 -->
+    <div class="statusarea">
       <div class="statusmain">
         <div class="statusline">
           <div class="statusdot statusdot-free" v-if="pageState === 'free'"></div>
