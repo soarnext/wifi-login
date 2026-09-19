@@ -69,7 +69,7 @@ pnpm -C ui package        # 产物为 CVI 版; 记得用 git checkout 还原三�
 ```
 
 版本号在 `ui/package.json` 与 `ui/src/services/version.js` 两处同步,
-产物名为 `<appid>.<主>_<次>_<修>.amr` (如 `8001865309000001.1_2_0.amr`),
+产物名为 `<appid>.<主>_<次>_<修>.amr` (如 `8001865309000001.1_1_2.amr`),
 Release 资产按平台加 `-rk` / `-cvi` 后缀。
 
 ## 安装

@@ -1,7 +1,7 @@
 {
   "name": "wifi-login",
   "appid": "8001865309000001",
-  "version": "1.2.0",
+  "version": "1.1.2",
   "description": "WiFi 网络认证 + 设备管理 (Panabit Portal) for 有道词典笔, 支持外部小程序调用",
   "icon": "",
   "quickjs": {

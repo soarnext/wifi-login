@@ -123,8 +123,8 @@ token 过期会提示"无法登入需刷新"。本应用:
 
 ```sh
 # RK3562 (X6PRO)
-adb push 8001865309000001.1_2_0-rk.amr /data/local/tmp/
-adb shell "miniapp_cli install /data/local/tmp/8001865309000001.1_2_0-rk.amr"
+adb push 8001865309000001.1_1_2-rk.amr /data/local/tmp/
+adb shell "miniapp_cli install /data/local/tmp/8001865309000001.1_1_2-rk.amr"
 adb shell "miniapp_cli start 8001865309000001"
 
 # CVITEK (RISC-V 机型): 换用 -cvi 后缀的产物
