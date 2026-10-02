@@ -22,7 +22,7 @@
       <text class="row">· Xiro · 来自 vibe coding 制作</text>
       <text class="section">开源</text>
       <text class="row coderow">github.com/soarnext/wifi-login</text>
-      <text class="row">· 许可: PolyForm Noncommercial 1.0.0 (仅限非商业用途)</text>
+      <text class="row">· 许可: MIT + GPLv3 双许可 (任选其一)</text>
       <text class="section">设备兼容性</text>
       <text class="row">· 有道词典笔 X6PRO (RK3562): 已实测, 使用 -rk 产物</text>
       <text class="row">· CVITEK (RISC-V) 机型: 已适配待真机验证, 使用 -cvi 产物</text>
