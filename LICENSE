@@ -1,38 +1,24 @@
-This project is dual-licensed under your choice of either of the following licenses:
+# License Structure (许可结构)
 
-  1. MIT License
-  2. GNU General Public License version 3 (GPLv3)
+This project uses a layered license scheme:
 
-You may use, modify, and distribute this software under the terms of either
-license, at your option. See the full texts below.
+| Scope | License |
+| --- | --- |
+| Everything not listed below (default) | GNU General Public License v3.0 |
+| `ui/src/services/portal-adapters/` | MIT License |
+| `ui/src/services/platform/` | MIT License |
 
-================================================================================
+- GPLv3 full text: see the GPLv3 section below, or <https://www.gnu.org/licenses/gpl-3.0.txt>
+- MIT full text: see `ui/src/services/portal-adapters/LICENSE` and `ui/src/services/platform/LICENSE`
 
-                                 MIT License
-
-Copyright (c) 2026 soarnext
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The MIT-licensed directories are extension points for third-party developers
+(portal adapters for new authentication systems, and platform service
+implementations for new hardware); they may be reused under the MIT terms.
+All other code is licensed under the GPLv3.
 
 ================================================================================
 
-          GNU GENERAL PUBLIC LICENSE — Version 3, 29 June 2007
+        GNU GENERAL PUBLIC LICENSE — Version 3, 29 June 2007
 
  of this license document, but changing it is not allowed.
 
